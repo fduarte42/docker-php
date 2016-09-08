@@ -52,9 +52,11 @@ RUN php /tmp/composer-setup.php --no-ansi --install-dir=/usr/local/bin --filenam
 RUN apt-get install -y git unzip
 
 # copy ssh key and autostart keychain on login
+RUN mkdir /root/.ssh
+RUN chmod 644 /root/.ssh
 RUN apt-get install -y keychain
 RUN echo '\nif [ -e "/ssh/id_rsa.pub" ]; then' >> /root/.bashrc
-RUN echo '    cp /ssh/id_rsa.pub ~/.ssh/id_rsa.pu' >> /root/.bashrc
+RUN echo '    cp /ssh/id_rsa.pub ~/.ssh/id_rsa.pub' >> /root/.bashrc
 RUN echo '    chmod 644 /root/.ssh/id_rsa.pub' >> /root/.bashrc
 RUN echo 'fi' >> /root/.bashrc
 RUN echo '\nif [ -e "/ssh/id_rsa" ]; then' >> /root/.bashrc
