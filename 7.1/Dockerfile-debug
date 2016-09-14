@@ -36,6 +36,7 @@ RUN echo "always_populate_raw_post_data = -1" > /usr/local/etc/php/conf.d/typo3.
 RUN echo "max_execution_time = 240" >> /usr/local/etc/php/conf.d/typo3.ini
 RUN echo "max_input_vars = 1500" >> /usr/local/etc/php/conf.d/typo3.ini
 RUN docker-php-ext-install zip
+RUN apt-get install -y graphicsmagick
 
 # INSTALL curl
 RUN apt-get install -y curl
