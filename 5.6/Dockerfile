@@ -15,6 +15,10 @@ RUN apt-get update && apt-get install -y \
 # Install opcache
 RUN docker-php-ext-install opcache
 
+# Hide errors
+RUN echo "display_errors=off" > /usr/local/etc/php/conf.d/errors.ini
+RUN echo "log_errors=on" >> /usr/local/etc/php/conf.d/errors.ini
+
 # Install APCu
 RUN pecl install apcu-4.0.11
 RUN echo "extension=apcu.so" > /usr/local/etc/php/conf.d/apcu.ini
