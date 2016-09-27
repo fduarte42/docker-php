@@ -77,6 +77,9 @@ RUN echo '    chmod 600 ~/.ssh/id_rsa' >> /root/.bashrc
 RUN echo '    eval $(keychain --eval id_rsa)' >> /root/.bashrc
 RUN echo 'fi' >> /root/.bashrc
 
+# set term
+RUN echo '\nexport TERM=xterm' >> /root/.bashrc
+
 VOLUME ["/var/www/html"]
 
 WORKDIR /var/www/html

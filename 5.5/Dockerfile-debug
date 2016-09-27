@@ -85,6 +85,9 @@ RUN echo "zend_extension=$(find /usr/local/lib/php/extensions/ -name xdebug.so)"
     && echo "xdebug.remote_enable=on" >> /usr/local/etc/php/conf.d/xdebug.ini \
     && echo "xdebug.idekey=PHPSTORM" >> /usr/local/etc/php/conf.d/xdebug.ini
 
+# set term
+RUN echo '\nexport TERM=xterm' >> /root/.bashrc
+
 VOLUME ["/var/www/html"]
 
 WORKDIR /var/www/html
