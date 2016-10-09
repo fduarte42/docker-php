@@ -1,4 +1,4 @@
-FROM php:5.6.26-apache
+FROM php:5.6-apache
 
 RUN apt-get update && apt-get install -y \
         libfreetype6-dev \
@@ -61,6 +61,7 @@ RUN curl -o /tmp/composer-setup.php https://getcomposer.org/installer \
 
 # Install Composer
 RUN php /tmp/composer-setup.php --no-ansi --install-dir=/usr/local/bin --filename=composer && rm -rf /tmp/composer-setup.php
+RUN mkdir /var/www/.composer && chown www-data:www-data /var/www/.composer
 
 RUN apt-get install -y git unzip
 
