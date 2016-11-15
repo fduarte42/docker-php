@@ -66,9 +66,10 @@ RUN mkdir /var/www/.composer && chown www-data:www-data /var/www/.composer
 RUN apt-get install -y git unzip
 
 # copy ssh key and autostart keychain on login
+RUN apt-get install -y keychain
+
 RUN mkdir /root/.ssh
 RUN chmod 644 /root/.ssh
-RUN apt-get install -y keychain
 RUN echo '\nif [ -e "/ssh/id_rsa.pub" ]; then' >> /root/.bashrc
 RUN echo '    cp /ssh/id_rsa.pub ~/.ssh/id_rsa.pub' >> /root/.bashrc
 RUN echo '    chmod 644 /root/.ssh/id_rsa.pub' >> /root/.bashrc
@@ -79,8 +80,27 @@ RUN echo '    chmod 600 ~/.ssh/id_rsa' >> /root/.bashrc
 RUN echo '    eval $(keychain --eval id_rsa)' >> /root/.bashrc
 RUN echo 'fi' >> /root/.bashrc
 
+RUN mkdir /var/www/.ssh
+RUN chown -R www-data:www-data /var/www/.ssh
+RUN chmod 644 /root/.ssh
+RUN mkdir /var/www/.keychain
+RUN chown -R www-data:www-data /var/www/.keychain
+RUN cp /root/.profile /var/www/.profile
+RUN chown -R www-data:www-data /var/www/.profile
+RUN echo '\nif [ -e "/ssh/id_rsa.pub" ]; then' >> /var/www/.bashrc
+RUN echo '    cp /ssh/id_rsa.pub /var/www/.ssh/id_rsa.pub' >> /var/www/.bashrc
+RUN echo '    chmod 644 /var/www/.ssh/id_rsa.pub' >> /var/www/.bashrc
+RUN echo 'fi' >> /var/www/.bashrc
+RUN echo '\nif [ -e "/ssh/id_rsa" ]; then' >> /var/www/.bashrc
+RUN echo '    cp /ssh/id_rsa /var/www/.ssh/id_rsa' >> /var/www/.bashrc
+RUN echo '    chmod 600 /var/www/.ssh/id_rsa' >> /var/www/.bashrc
+RUN echo '    eval $(keychain --eval /var/www/.ssh/id_rsa)' >> /var/www/.bashrc
+RUN echo 'fi' >> /var/www/.bashrc
+RUN chown -R www-data:www-data /var/www/.bashrc
+
 # set term
 RUN echo '\nexport TERM=xterm' >> /root/.bashrc
+RUN echo '\nexport TERM=xterm' >> /var/www/.bashrc
 
 VOLUME ["/var/www/html"]
 
