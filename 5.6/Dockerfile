@@ -102,6 +102,41 @@ RUN chown -R www-data:www-data /var/www/.bashrc
 RUN echo '\nexport TERM=xterm' >> /root/.bashrc
 RUN echo '\nexport TERM=xterm' >> /var/www/.bashrc
 
+# cron
+RUN apt-get install -y cron
+RUN echo '#!/bin/sh\n' > /usr/local/bin/cron-foreground
+RUN echo 'if [ -e "/tmp/crontab" ]; then' >> /usr/local/bin/cron-foreground
+RUN echo '    crontab -u www-data /tmp/crontab' >> /usr/local/bin/cron-foreground
+RUN echo 'fi' >> /usr/local/bin/cron-foreground
+RUN echo '\nexec cron -f -L 15' >> /usr/local/bin/cron-foreground
+RUN chmod 700 /usr/local/bin/cron-foreground
+
+# supervisord
+RUN apt-get install -y supervisor
+RUN echo '[supervisord]' > /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'logfile=/var/log/supervisor/supervisord.log' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'pidfile=/var/run/supervisord.pid' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'loglevel=info' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'nodaemon=true' >> /etc/supervisor/conf.d/supervisord.conf
+
+RUN echo '\n[program:apache2]' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'command=/usr/local/bin/apache2-foreground' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'autostart=true' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'autorestart=true' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'stdout_logfile=/dev/stdout' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'stdout_logfile_maxbytes=0' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'redirect_stderr=true' >> /etc/supervisor/conf.d/supervisord.conf
+
+RUN echo '\n[program:cron]' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'command=/usr/local/bin/cron-foreground' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'autostart=true' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'autorestart=true' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'stdout_logfile=/dev/stdout' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'stdout_logfile_maxbytes=0' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'redirect_stderr=true' >> /etc/supervisor/conf.d/supervisord.conf
+
 VOLUME ["/var/www/html"]
 
 WORKDIR /var/www/html
+
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
