@@ -16,6 +16,9 @@ RUN apt-get update && apt-get install -y \
 # Install opcache
 RUN docker-php-ext-install opcache
 
+# Install Intl-Extension
+RUN apt-get install libicu-dev && docker-php-ext-install intl
+
 # Hide errors
 RUN echo "display_errors=off" > /usr/local/etc/php/conf.d/errors.ini
 RUN echo "log_errors=on" >> /usr/local/etc/php/conf.d/errors.ini
