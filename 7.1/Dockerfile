@@ -92,7 +92,7 @@ RUN curl -o /tmp/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb http://download.gna.o
 RUN apt-get install -y keychain
 
 RUN mkdir /root/.ssh
-RUN chmod 644 /root/.ssh
+RUN chmod 744 /root/.ssh
 RUN echo '\nif [ -e "/ssh/id_rsa.pub" ]; then' >> /root/.bashrc
 RUN echo '    cp /ssh/id_rsa.pub ~/.ssh/id_rsa.pub' >> /root/.bashrc
 RUN echo '    chmod 644 /root/.ssh/id_rsa.pub' >> /root/.bashrc
@@ -105,7 +105,7 @@ RUN echo 'fi' >> /root/.bashrc
 
 RUN mkdir /var/www/.ssh
 RUN chown -R www-data:www-data /var/www/.ssh
-RUN chmod 644 /var/www/.ssh
+RUN chmod 744 /var/www/.ssh
 RUN mkdir /var/www/.keychain
 RUN chown -R www-data:www-data /var/www/.keychain
 RUN cp /root/.profile /var/www/.profile
