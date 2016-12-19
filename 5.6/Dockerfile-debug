@@ -66,6 +66,26 @@ RUN mkdir /var/www/.composer && chown www-data:www-data /var/www/.composer
 
 RUN apt-get install -y git unzip
 
+# Install ssh2 extension
+RUN apt-get install -y libssh2-1-dev
+RUN pecl install ssh2 channel://pecl.php.net/ssh2-0.13
+RUN echo "extension=ssh2.so" > /usr/local/etc/php/conf.d/ssh2.ini
+
+# Install xsl extension
+RUN apt-get install -y libxslt1-dev
+RUN docker-php-ext-install xsl
+
+# Install wkhtmltopdf
+RUN sed -i "s/main/main contrib/g" /etc/apt/sources.list && apt-get update
+RUN echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula \
+        select true | debconf-set-selections
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential xorg libssl-dev libxrender-dev libjpeg62 fontconfig ttf-mscorefonts-installer xfonts-base xfonts-75dpi curl wget \
+    && apt-get clean \
+    && apt-get autoremove -y
+RUN curl -o /tmp/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb http://download.gna.org/wkhtmltopdf/0.12/0.12.2.1/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb \
+    && dpkg --install /tmp/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb \
+    && rm /tmp/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb
+
 # copy ssh key and autostart keychain on login
 RUN apt-get install -y keychain
 
@@ -83,7 +103,7 @@ RUN echo 'fi' >> /root/.bashrc
 
 RUN mkdir /var/www/.ssh
 RUN chown -R www-data:www-data /var/www/.ssh
-RUN chmod 644 /root/.ssh
+RUN chmod 644 /var/www/.ssh
 RUN mkdir /var/www/.keychain
 RUN chown -R www-data:www-data /var/www/.keychain
 RUN cp /root/.profile /var/www/.profile

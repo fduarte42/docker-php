@@ -1,4 +1,4 @@
-FROM php:5.5.38-apache
+FROM mindk/php5.3.29-apache
 
 RUN apt-get update && apt-get install -y \
         libfreetype6-dev \
@@ -7,14 +7,13 @@ RUN apt-get update && apt-get install -y \
         libpng12-dev \
         libxml2-dev \
         libbz2-dev \
+        libmysqlclient-dev \
         sudo \
+    && sudo ln -s /usr/include/freetype2 /usr/include/freetype2/freetype \
     && docker-php-ext-install mysqli mysql pdo pdo_mysql soap exif bz2 \
     && docker-php-ext-install -j$(nproc) iconv mcrypt \
     && docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ \
     && docker-php-ext-install -j$(nproc) gd
-
-# Install opcache
-RUN docker-php-ext-install opcache
 
 # Install Intl-Extension
 RUN apt-get install -y libicu-dev && docker-php-ext-install intl
@@ -23,10 +22,11 @@ RUN apt-get install -y libicu-dev && docker-php-ext-install intl
 RUN echo "display_errors=off" > /usr/local/etc/php/conf.d/errors.ini
 RUN echo "log_errors=on" >> /usr/local/etc/php/conf.d/errors.ini
 
-# Install APCu
-RUN pecl install apcu-4.0.11
-RUN echo "extension=apcu.so" > /usr/local/etc/php/conf.d/apcu.ini
-RUN echo "apc.enable_cli = On" >> /usr/local/etc/php/conf.d/apcu.ini
+# Install APC
+RUN pecl install apc
+RUN echo "extension=apc.so" > /usr/local/etc/php/conf.d/apc.ini
+RUN echo "apc.enable = On" >> /usr/local/etc/php/conf.d/apc.ini
+RUN echo "apc.enable_cli = On" >> /usr/local/etc/php/conf.d/apc.ini
 
 RUN a2enmod rewrite
 

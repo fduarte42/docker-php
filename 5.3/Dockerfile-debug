@@ -1,4 +1,6 @@
-FROM php:5.5.38-apache
+FROM mindk/php5.3.29-apache
+
+ENV XDEBUG_REMOTE_HOST localhost
 
 RUN apt-get update && apt-get install -y \
         libfreetype6-dev \
@@ -7,26 +9,22 @@ RUN apt-get update && apt-get install -y \
         libpng12-dev \
         libxml2-dev \
         libbz2-dev \
+        libmysqlclient-dev \
         sudo \
+    && sudo ln -s /usr/include/freetype2 /usr/include/freetype2/freetype \
     && docker-php-ext-install mysqli mysql pdo pdo_mysql soap exif bz2 \
     && docker-php-ext-install -j$(nproc) iconv mcrypt \
     && docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ \
     && docker-php-ext-install -j$(nproc) gd
 
-# Install opcache
-RUN docker-php-ext-install opcache
-
 # Install Intl-Extension
 RUN apt-get install -y libicu-dev && docker-php-ext-install intl
 
-# Hide errors
-RUN echo "display_errors=off" > /usr/local/etc/php/conf.d/errors.ini
-RUN echo "log_errors=on" >> /usr/local/etc/php/conf.d/errors.ini
-
-# Install APCu
-RUN pecl install apcu-4.0.11
-RUN echo "extension=apcu.so" > /usr/local/etc/php/conf.d/apcu.ini
-RUN echo "apc.enable_cli = On" >> /usr/local/etc/php/conf.d/apcu.ini
+# Install APC
+RUN pecl install apc
+RUN echo "extension=apc.so" > /usr/local/etc/php/conf.d/apc.ini
+RUN echo "apc.enable = On" >> /usr/local/etc/php/conf.d/apc.ini
+RUN echo "apc.enable_cli = On" >> /usr/local/etc/php/conf.d/apc.ini
 
 RUN a2enmod rewrite
 
@@ -124,6 +122,16 @@ RUN chown -R www-data:www-data /var/www/.bashrc
 # set term
 RUN echo '\nexport TERM=xterm' >> /root/.bashrc
 RUN echo '\nexport TERM=xterm' >> /var/www/.bashrc
+
+# XDEBUG
+RUN pecl install xdebug-2.2.7
+RUN echo "zend_extension=$(find /usr/local/lib/php/extensions/ -name xdebug.so)" > /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.remote_autostart=on" >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.remote_connect_back=off" >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.remote_port=9000" >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo 'xdebug.remote_host="${XDEBUG_REMOTE_HOST}"' >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.remote_enable=on" >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.idekey=PHPSTORM" >> /usr/local/etc/php/conf.d/xdebug.ini
 
 # cron
 RUN apt-get install -y cron
