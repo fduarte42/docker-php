@@ -88,6 +88,15 @@ RUN curl -o /tmp/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb http://download.gna.o
     && dpkg --install /tmp/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb \
     && rm /tmp/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb
 
+# Install pngquant
+RUN cd /tmp \
+    && git clone --recursive https://github.com/pornel/pngquant.git \
+    && cd pngquant \
+    && make \
+    && make install \
+    && cd \
+    && rm -Rf /tmp/pngquant
+
 # copy ssh key and autostart keychain on login
 RUN apt-get install -y keychain
 
