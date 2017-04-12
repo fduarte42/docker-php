@@ -27,6 +27,7 @@ RUN echo "apc.enable = On" >> /usr/local/etc/php/conf.d/apc.ini
 RUN echo "apc.enable_cli = On" >> /usr/local/etc/php/conf.d/apc.ini
 
 RUN a2enmod rewrite
+RUN a2enmod headers
 
 # Install SSMTP
 RUN apt-get install -y ssmtp
@@ -151,6 +152,24 @@ RUN echo 'fi' >> /usr/local/bin/cron-foreground
 RUN echo '\nexec cron -f -L 15' >> /usr/local/bin/cron-foreground
 RUN chmod 700 /usr/local/bin/cron-foreground
 
+# create init script
+RUN echo '#!/bin/bash\n' > /docker-php-init.sh \
+    && chmod 755 /docker-php-init.sh
+
+RUN apt-get install gnupg \
+    && mkdir /var/www/.gnupg \
+    && chown -R www-data:www-data /var/www/.gnupg \
+    && chmod 700 /var/www/.gnupg \
+    && echo '\nif [ -e "/gnupg/gpg-key.asc" ]; then' >> /docker-php-init.sh \
+    && echo '    sudo -u www-data gpg --import /gnupg/gpg-key.asc' >> /docker-php-init.sh \
+    && echo 'fi' >> /docker-php-init.sh \
+    && echo '\nif [ -e "/gnupg/gpg-secret-key.asc" ]; then' >> /docker-php-init.sh \
+    && echo '    sudo -u www-data gpg --import /gnupg/gpg-secret-key.asc' >> /docker-php-init.sh \
+    && echo 'fi' >> /docker-php-init.sh \
+    && echo '\nif [ -e "/gnupg/trust.txt" ]; then' >> /docker-php-init.sh \
+    && echo '    sudo -u www-data gpg --import-ownertrust /gnupg/trust.txt' >> /docker-php-init.sh \
+    && echo 'fi' >> /docker-php-init.sh
+
 # supervisord
 RUN apt-get install -y supervisor
 RUN echo '[supervisord]' > /etc/supervisor/conf.d/supervisord.conf
@@ -171,6 +190,15 @@ RUN echo '\n[program:cron]' >> /etc/supervisor/conf.d/supervisord.conf
 RUN echo 'command=/usr/local/bin/cron-foreground' >> /etc/supervisor/conf.d/supervisord.conf
 RUN echo 'autostart=true' >> /etc/supervisor/conf.d/supervisord.conf
 RUN echo 'autorestart=true' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'stdout_logfile=/dev/stdout' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'stdout_logfile_maxbytes=0' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'redirect_stderr=true' >> /etc/supervisor/conf.d/supervisord.conf
+
+RUN echo '\n[program:docker-php-init]' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'command=/docker-php-init.sh' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'autostart=true' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'autorestart=false' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'startsecs=0' >> /etc/supervisor/conf.d/supervisord.conf
 RUN echo 'stdout_logfile=/dev/stdout' >> /etc/supervisor/conf.d/supervisord.conf
 RUN echo 'stdout_logfile_maxbytes=0' >> /etc/supervisor/conf.d/supervisord.conf
 RUN echo 'redirect_stderr=true' >> /etc/supervisor/conf.d/supervisord.conf
