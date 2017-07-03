@@ -33,6 +33,7 @@ RUN echo "apc.enable_cli = On" >> /usr/local/etc/php/conf.d/apcu.ini
 
 RUN a2enmod rewrite
 RUN a2enmod headers
+RUN a2enmod expires
 
 # Install SSMTP
 RUN apt-get install -y ssmtp
@@ -75,7 +76,7 @@ RUN apt-get install -y git unzip
 
 # Install ssh2 extension
 RUN apt-get install -y libssh2-1-dev
-RUN pecl -d preferred_state=alpha install ssh2 channel://pecl.php.net/ssh2-1.0
+RUN pecl -d preferred_state=alpha install ssh2-1.0
 RUN echo "extension=ssh2.so" > /usr/local/etc/php/conf.d/ssh2.ini
 
 # Install xsl extension
@@ -89,8 +90,8 @@ RUN echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula \
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential xorg libssl-dev libxrender-dev libjpeg62 fontconfig ttf-mscorefonts-installer xfonts-base xfonts-75dpi curl wget \
     && apt-get clean \
     && apt-get autoremove -y
-RUN curl -o /tmp/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb http://download.gna.org/wkhtmltopdf/0.12/0.12.2.1/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb \
-    && dpkg --install /tmp/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb \
+COPY wkhtmltox-0.12.2.1_linux-jessie-amd64.deb /tmp/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb
+RUN dpkg --install /tmp/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb \
     && rm /tmp/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb
 
 # Install pngquant
