@@ -16,6 +16,12 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ \
     && docker-php-ext-install -j$(nproc) gd
 
+# Install LDAP extension
+RUN apt-get install -y \
+        libldap2-dev \
+    && ln -fs /usr/lib/x86_64-linux-gnu/libldap.so /usr/lib/ \
+    && docker-php-ext-install ldap
+
 # Install opcache
 RUN docker-php-ext-install opcache
 
@@ -34,6 +40,7 @@ RUN echo "apc.enable_cli = On" >> /usr/local/etc/php/conf.d/apcu.ini
 RUN a2enmod rewrite
 RUN a2enmod headers
 RUN a2enmod expires
+RUN a2enmod proxy
 
 # Install SSMTP
 RUN apt-get install -y ssmtp

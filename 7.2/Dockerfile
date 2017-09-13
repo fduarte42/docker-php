@@ -1,10 +1,10 @@
-FROM php:7.0-apache
+FROM php:7.2-apache
 
 RUN apt-get update && apt-get install -y \
         libfreetype6-dev \
         libjpeg62-turbo-dev \
         libmcrypt-dev \
-        libpng12-dev \
+        libpng-dev \
         libxml2-dev \
         libbz2-dev \
         sudo \
@@ -54,7 +54,6 @@ RUN echo "date.timezone = Europe/Berlin" > /usr/local/etc/php/conf.d/timezone.in
 RUN echo "always_populate_raw_post_data = -1" > /usr/local/etc/php/conf.d/typo3.ini
 RUN echo "max_execution_time = 240" >> /usr/local/etc/php/conf.d/typo3.ini
 RUN echo "max_input_vars = 1500" >> /usr/local/etc/php/conf.d/typo3.ini
-RUN echo "pcre.jit = 0" >> /usr/local/etc/php/conf.d/typo3.ini
 RUN docker-php-ext-install zip
 RUN apt-get install -y graphicsmagick
 
@@ -97,9 +96,7 @@ RUN echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula \
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential xorg libssl-dev libxrender-dev libjpeg62 fontconfig ttf-mscorefonts-installer xfonts-base xfonts-75dpi curl wget \
     && apt-get clean \
     && apt-get autoremove -y
-COPY wkhtmltox-0.12.2.1_linux-jessie-amd64.deb /tmp/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb
-RUN dpkg --install /tmp/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb \
-    && rm /tmp/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb
+RUN apt-get install -y wkhtmltopdf
 
 # Install pngquant
 RUN cd /tmp \
@@ -160,7 +157,7 @@ RUN chmod 700 /usr/local/bin/cron-foreground
 RUN echo '#!/bin/bash\n' > /docker-php-init.sh \
     && chmod 755 /docker-php-init.sh
 
-RUN apt-get install gnupg \
+RUN apt-get install -y gnupg \
     && mkdir /var/www/.gnupg \
     && chown -R www-data:www-data /var/www/.gnupg \
     && chmod 700 /var/www/.gnupg \
@@ -202,6 +199,7 @@ RUN echo '\n[program:docker-php-init]' >> /etc/supervisor/conf.d/supervisord.con
 RUN echo 'command=/docker-php-init.sh' >> /etc/supervisor/conf.d/supervisord.conf
 RUN echo 'autostart=true' >> /etc/supervisor/conf.d/supervisord.conf
 RUN echo 'autorestart=false' >> /etc/supervisor/conf.d/supervisord.conf
+RUN echo 'startsecs=0' >> /etc/supervisor/conf.d/supervisord.conf
 RUN echo 'stdout_logfile=/dev/stdout' >> /etc/supervisor/conf.d/supervisord.conf
 RUN echo 'stdout_logfile_maxbytes=0' >> /etc/supervisor/conf.d/supervisord.conf
 RUN echo 'redirect_stderr=true' >> /etc/supervisor/conf.d/supervisord.conf
