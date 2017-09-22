@@ -148,6 +148,10 @@ RUN chown -R www-data:www-data /var/www/.bashrc
 RUN echo '\nexport TERM=xterm' >> /root/.bashrc
 RUN echo '\nexport TERM=xterm' >> /var/www/.bashrc
 
+# set composer home
+RUN echo '\nexport COMPOSER_HOME=~/.composer' >> /root/.bashrc
+RUN echo '\nexport COMPOSER_HOME=~/.composer' >> /var/www/.bashrc
+
 # cron
 RUN apt-get install -y cron
 RUN echo '#!/bin/sh\n' > /usr/local/bin/cron-foreground
