@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
         libkrb5-dev \
     && sudo ln -s /usr/include/freetype2 /usr/include/freetype2/freetype \
     && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
-    && docker-php-ext-install mysqli mysql pdo pdo_mysql soap exif bz2 imap \
+    && docker-php-ext-install mysqli mysql pdo pdo_mysql soap exif bz2 imap gettext \
     && docker-php-ext-install -j$(nproc) iconv mcrypt \
     && docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ \
     && docker-php-ext-install -j$(nproc) gd
