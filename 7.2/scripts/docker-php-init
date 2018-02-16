@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+if [ -e "/gnupg/gpg-key.asc" ]; then
+    sudo -u www-data gpg --import /gnupg/gpg-key.asc
+fi
+if [ -e "/gnupg/gpg-secret-key.asc" ]; then
+    sudo -u www-data gpg --import /gnupg/gpg-secret-key.asc
+fi
+if [ -e "/gnupg/trust.txt" ]; then
+    sudo -u www-data gpg --import-ownertrust /gnupg/trust.txt
+fi

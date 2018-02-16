@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+if [ -e "/tmp/crontab" ]; then
+    crontab -u www-data /tmp/crontab
+fi
+
+exec cron -f -L 15
