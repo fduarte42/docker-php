@@ -10,3 +10,4 @@ echo "xdebug.remote_port=9000" >> /usr/local/etc/php/conf.d/xdebug.ini
 echo 'xdebug.remote_host="${XDEBUG_REMOTE_HOST}"' >> /usr/local/etc/php/conf.d/xdebug.ini
 echo "xdebug.remote_enable=on" >> /usr/local/etc/php/conf.d/xdebug.ini
 echo "xdebug.idekey=PHPSTORM" >> /usr/local/etc/php/conf.d/xdebug.ini
+echo "display_errors=on" >> /usr/local/etc/php/conf.d/xdebug.ini
