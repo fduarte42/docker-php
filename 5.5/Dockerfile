@@ -29,7 +29,7 @@ COPY config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 # cleanup
 RUN rm -rf /var/lib/apt/lists/*
 
-VOLUME ["/var/www/html"]
+#VOLUME ["/var/www/html"]
 
 WORKDIR /var/www/html
 
