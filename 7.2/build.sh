@@ -94,7 +94,7 @@ apt-get install -y build-essential xorg libssl-dev libxrender-dev libjpeg62 font
 apt-get clean
 apt-get autoremove -y
 apt-get install -y wkhtmltopdf
-apt-get xvfb
+apt-get install xvfb
 
 # Install pngquant
 cd /tmp
