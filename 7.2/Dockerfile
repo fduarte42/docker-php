@@ -24,8 +24,12 @@ RUN chmod 700 /usr/local/bin/cron-foreground
 COPY scripts/docker-php-init /docker-php-init
 RUN chmod 755 /docker-php-init
 COPY config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY script/wkhtmltopdf /usr/local/bin/wkhtmltopdf
+RUN chmod 755 /usr/local/bin/wkhtmltopdf
 
 # cleanup
+COPY script/wkhtmltopdf /usr/local/bin/wkhtmltopdf
+RUN chmod 755 /usr/local/bin/wkhtmltopdf
 RUN rm -rf /var/lib/apt/lists/*
 
 #VOLUME ["/var/www/html"]
