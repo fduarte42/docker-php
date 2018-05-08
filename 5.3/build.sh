@@ -106,7 +106,7 @@ cd
 rm -Rf /tmp/pngquant
 
 # poppler
-apt-get install poppler-utils
+apt-get install -y poppler-utils
 
 # keychain
 apt-get install -y keychain
