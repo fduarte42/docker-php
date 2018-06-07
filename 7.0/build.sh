@@ -5,14 +5,12 @@ DEBIAN_FRONTEND=noninteractive
 TERM=dumb
 
 apt-get update
-apt-get install -y --reinstall perl-base
-apt-get install -y --reinstall python3-software-properties
 apt-get upgrade -y
 apt-get install -y \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
     libmcrypt-dev \
-    libpng12-dev \
+    libpng-dev \
     libxml2-dev \
     libbz2-dev \
     sudo \
@@ -95,8 +93,8 @@ echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula \
 apt-get install -y build-essential xorg libssl-dev libxrender-dev libjpeg62 fontconfig ttf-mscorefonts-installer xfonts-base xfonts-75dpi curl wget
 apt-get clean
 apt-get autoremove -y
-dpkg --install /tmp/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb
-rm /tmp/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb
+apt-get install -y wkhtmltopdf
+apt-get install xvfb
 
 # Install pngquant
 cd /tmp
