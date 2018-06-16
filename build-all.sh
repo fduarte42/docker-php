@@ -7,6 +7,8 @@ for V in $VERSIONS; do
     cd $V
     docker build --pull --no-cache -f Dockerfile -t fduarte42/docker-php:$V .
     docker build --no-cache -f Dockerfile-debug -t fduarte42/docker-php:$V-debug .
+    docker build --no-cache -f Dockerfile-intl -t fduarte42/docker-php:$V-intl .
+    docker build --no-cache -f Dockerfile-intl-debug -t fduarte42/docker-php:$V-intl-debug .
     cd ..
 done
 

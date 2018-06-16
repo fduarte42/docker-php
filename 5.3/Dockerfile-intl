@@ -1,0 +1,5 @@
+FROM fduarte42/docker-php:5.3
+
+# add intl packages
+COPY add-intl.sh /add-intl.sh
+RUN bash /add-intl.sh && rm /add-intl.sh
