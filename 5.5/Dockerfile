@@ -26,6 +26,10 @@ COPY scripts/docker-php-init /docker-php-init
 RUN chmod 755 /docker-php-init
 COPY config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
+# add intl packages
+COPY add-intl.sh /add-intl.sh
+RUN bash /add-intl.sh && rm /add-intl.sh
+
 # cleanup
 RUN rm -rf /var/lib/apt/lists/*
 

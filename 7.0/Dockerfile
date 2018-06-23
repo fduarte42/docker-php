@@ -27,6 +27,10 @@ COPY config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY scripts/wkhtmltopdf /usr/local/bin/wkhtmltopdf
 RUN chmod 755 /usr/local/bin/wkhtmltopdf
 
+# add intl packages
+COPY add-intl.sh /add-intl.sh
+RUN bash /add-intl.sh && rm /add-intl.sh
+
 # cleanup
 RUN rm -rf /var/lib/apt/lists/*
 

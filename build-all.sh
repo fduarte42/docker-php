@@ -7,9 +7,17 @@ for V in $VERSIONS; do
     cd $V
     docker build --pull --no-cache -f Dockerfile -t fduarte42/docker-php:$V .
     docker build --no-cache -f Dockerfile-debug -t fduarte42/docker-php:$V-debug .
-    docker build --no-cache -f Dockerfile-intl -t fduarte42/docker-php:$V-intl .
-    docker build --no-cache -f Dockerfile-intl-debug -t fduarte42/docker-php:$V-intl-debug .
     cd ..
 done
+
+EXTRA_VERSIONS="7.2"
+
+for V in $EXTRA_VERSIONS; do
+    cd $V
+    docker build --no-cache -f Dockerfile-sqlsrv -t fduarte42/docker-php:$V-sqlsrv .
+    docker build --no-cache -f Dockerfile-sqlsrv-debug -t fduarte42/docker-php:$V-sqlsrv-debug .
+    cd ..
+done
+
 
 exit 0
