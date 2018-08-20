@@ -17,7 +17,7 @@ apt-get install -y \
     libc-client-dev \
     libkrb5-dev
 docker-php-ext-configure imap --with-kerberos --with-imap-ssl
-docker-php-ext-install mysqli mysql pdo pdo_mysql soap exif bz2 imap gettext
+docker-php-ext-install mysqli mysql pdo pdo_mysql soap exif bz2 imap gettext bcmath
 docker-php-ext-install -j$(nproc) iconv mcrypt
 docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/
 docker-php-ext-install -j$(nproc) gd
