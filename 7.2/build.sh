@@ -15,12 +15,20 @@ apt-get install -y \
     libbz2-dev \
     sudo \
     libc-client-dev \
-    libkrb5-dev
+    libkrb5-dev \
+    libz-dev \
+    libmemcached-dev \
+    libmemcached11 \
+    libmemcachedutil2
 docker-php-ext-configure imap --with-kerberos --with-imap-ssl
 docker-php-ext-install mysqli pdo pdo_mysql soap exif bz2 imap gettext bcmath
 docker-php-ext-install -j$(nproc) iconv
 docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/
 docker-php-ext-install -j$(nproc) gd
+
+# Memcached
+pecl install memcached
+echo extension=memcached.so > /usr/local/etc/php/conf.d/memcached.ini
 
 # Install LDAP extension
 apt-get install -y libldap2-dev
