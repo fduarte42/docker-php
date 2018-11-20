@@ -13,7 +13,7 @@ ENV COMPOSER_ALLOW_SUPERUSER 1
 COPY scripts/.bashrc /root/.bashrc
 COPY scripts/.bashrc /var/www/.bashrc
 RUN chown -R www-data:www-data /var/www/.bashrc
-COPY wkhtmltox-0.12.2.1_linux-jessie-amd64.deb /tmp/wkhtmltox-0.12.2.1_linux-jessie-amd64.deb
+COPY wkhtmltox_0.12.5-1.jessie_amd64.deb /tmp/wkhtmltox_0.12.5-1.jessie_amd64.deb
 
 # build
 COPY build.sh /build.sh

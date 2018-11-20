@@ -13,6 +13,7 @@ ENV COMPOSER_ALLOW_SUPERUSER 1
 COPY scripts/.bashrc /root/.bashrc
 COPY scripts/.bashrc /var/www/.bashrc
 RUN chown -R www-data:www-data /var/www/.bashrc
+COPY wkhtmltox_0.12.5-1.stretch_amd64.deb /tmp/wkhtmltox_0.12.5-1.stretch_amd64.deb
 
 # build
 COPY build.sh /build.sh
@@ -24,8 +25,8 @@ RUN chmod 700 /usr/local/bin/cron-foreground
 COPY scripts/docker-php-init /docker-php-init
 RUN chmod 755 /docker-php-init
 COPY config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY scripts/wkhtmltopdf /usr/local/bin/wkhtmltopdf
-RUN chmod 755 /usr/local/bin/wkhtmltopdf
+#COPY scripts/wkhtmltopdf /usr/local/bin/wkhtmltopdf
+#RUN chmod 755 /usr/local/bin/wkhtmltopdf
 
 # add intl packages
 COPY add-intl.sh /add-intl.sh
