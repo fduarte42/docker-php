@@ -87,9 +87,9 @@ mkdir /var/www/.composer && chown www-data:www-data /var/www/.composer
 apt-get install -y git unzip
 
 # Install ssh2 extension
-apt-get install -y libssh2-1-dev
-pecl -d preferred_state=alpha install ssh2-1.1.2
-echo "extension=ssh2.so" > /usr/local/etc/php/conf.d/ssh2.ini
+#apt-get install -y libssh2-1-dev
+#pecl -d preferred_state=alpha install ssh2-1.1.2
+#echo "extension=ssh2.so" > /usr/local/etc/php/conf.d/ssh2.ini
 
 # Install xsl extension
 apt-get install -y libxslt1-dev

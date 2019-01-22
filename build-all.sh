@@ -10,16 +10,22 @@ for V in $VERSIONS; do
     cd ..
 done
 
-EXTRA_VERSIONS="7.2 7.3"
+EXTRA_VERSIONS="7.2"
 
 for V in $EXTRA_VERSIONS; do
     cd $V
     docker build --no-cache -f Dockerfile-sqlsrv -t fduarte42/docker-php:$V-sqlsrv .
     docker build --no-cache -f Dockerfile-sqlsrv-debug -t fduarte42/docker-php:$V-sqlsrv-debug .
+    cd ..
+done
+
+EXTRA_VERSIONS="7.2 7.3"
+
+for V in $EXTRA_VERSIONS; do
+    cd $V
     docker build --no-cache -f Dockerfile-oci -t fduarte42/docker-php:$V-oci .
     docker build --no-cache -f Dockerfile-oci-debug -t fduarte42/docker-php:$V-oci-debug .
     cd ..
 done
-
 
 exit 0
