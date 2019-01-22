@@ -94,6 +94,7 @@ apt-get install -y git unzip
 # Install xsl extension
 apt-get install -y libxslt1-dev
 docker-php-ext-install xsl
+echo "extension=decimal.so" > /usr/local/etc/php/conf.d/decimal.ini
 
 # install decimal extension
 apt-get install -y libmpdec-dev

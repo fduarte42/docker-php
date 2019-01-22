@@ -97,6 +97,7 @@ docker-php-ext-install xsl
 # install decimal extension
 apt-get install -y libmpdec-dev
 pecl install decimal
+echo "extension=decimal.so" > /usr/local/etc/php/conf.d/decimal.ini
 
 # Install wkhtmltopdf
 sed -i "s/main/main contrib/g" /etc/apt/sources.list && apt-get update
