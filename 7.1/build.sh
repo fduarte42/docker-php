@@ -86,6 +86,10 @@ echo "extension=ssh2.so" > /usr/local/etc/php/conf.d/ssh2.ini
 apt-get install -y libxslt1-dev
 docker-php-ext-install xsl
 
+# install decimal extension
+apt-get install -y libmpdec-dev
+pecl install decimal
+
 # Install wkhtmltopdf
 sed -i "s/main/main contrib/g" /etc/apt/sources.list && apt-get update
 echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula \
