@@ -16,6 +16,8 @@ for V in $EXTRA_VERSIONS; do
     cd $V
     docker build --no-cache -f Dockerfile-sqlsrv -t fduarte42/docker-php:$V-sqlsrv .
     docker build --no-cache -f Dockerfile-sqlsrv-debug -t fduarte42/docker-php:$V-sqlsrv-debug .
+    docker build --no-cache -f Dockerfile-chartdirector -t fduarte42/docker-php:$V-chartdirector .
+    docker build --no-cache -f Dockerfile-chartdirector-debug -t fduarte42/docker-php:$V-chartdirector-debug .
     cd ..
 done
 
