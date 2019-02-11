@@ -1,0 +1,9 @@
+FROM fduarte42/docker-php:7.1
+
+# add chartdirector extension
+COPY extension/chartdir_php_linux_64.tar.gz /tmp/
+
+COPY add-chartdirector.sh /add-chartdirector.sh
+RUN bash /add-chartdirector.sh && rm /add-chartdirector.sh
+
+RUN rm /tmp/chartdir_php_linux_64.tar.gz
