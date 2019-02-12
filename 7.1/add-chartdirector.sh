@@ -11,4 +11,4 @@ rm -R /tmp/ChartDirector
 mkdir ${EXTENSION_DIR}/../lib
 mv ${EXTENSION_DIR}/*.php /usr/local/lib/php
 
-echo "extension=phpchartdir720.dll" > /usr/local/etc/php/conf.d/chartdirector.ini
+echo "extension=phpchartdir710.dll" > /usr/local/etc/php/conf.d/chartdirector.ini
