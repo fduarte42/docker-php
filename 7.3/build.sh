@@ -87,18 +87,27 @@ mkdir /var/www/.composer && chown www-data:www-data /var/www/.composer
 apt-get install -y git unzip
 
 # Install ssh2 extension
-#apt-get install -y libssh2-1-dev
+apt-get install -y libssh2-1-dev
 #pecl -d preferred_state=alpha install ssh2-1.1.2
-#echo "extension=ssh2.so" > /usr/local/etc/php/conf.d/ssh2.ini
+cd /tmp
+git clone https://git.php.net/repository/pecl/networking/ssh2.git
+cd ssh2
+phpize
+./configure
+make
+make install
+cd
+rm -Rf /tmp/ssh2
+echo "extension=ssh2.so" > /usr/local/etc/php/conf.d/ssh2.ini
 
 # Install xsl extension
 apt-get install -y libxslt1-dev
 docker-php-ext-install xsl
-echo "extension=decimal.so" > /usr/local/etc/php/conf.d/decimal.ini
 
 # install decimal extension
 apt-get install -y libmpdec-dev
 pecl install decimal
+echo "extension=decimal.so" > /usr/local/etc/php/conf.d/decimal.ini
 
 # Install wkhtmltopdf
 sed -i "s/main/main contrib/g" /etc/apt/sources.list && apt-get update
