@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-DEBIAN_FRONTEND=noninteractive
-TERM=dumb
+export DEBIAN_FRONTEND=noninteractive
+export TERM=dumb
 
 apt-get update
 apt-get upgrade -y

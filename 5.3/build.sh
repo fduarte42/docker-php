@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
-DEBIAN_FRONTEND=noninteractive
-TERM=dumb
+export DEBIAN_FRONTEND=noninteractive
+export TERM=dumb
+
+# no more updates available
+sed -i '/jessie-updates/d' /etc/apt/sources.list
 
 apt-get update
 apt-get upgrade -y
