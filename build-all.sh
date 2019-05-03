@@ -23,6 +23,9 @@ EXTRA_VERSIONS="7.2 7.3"
 
 for V in $EXTRA_VERSIONS; do
     cd $V
+    docker build --pull --no-cache -f Dockerfile-ioncube_loader -t fduarte42/docker-php:$V-ioncube_loader .
+    docker build --pull --no-cache -f Dockerfile-sourceguardian -t fduarte42/docker-php:$V-sourceguardian .
+
     docker build --pull --no-cache -f Dockerfile-oci -t fduarte42/docker-php:$V-oci .
     docker build --no-cache -f Dockerfile-oci-debug -t fduarte42/docker-php:$V-oci-debug .
     cd ..
@@ -32,9 +35,6 @@ EXTRA_VERSIONS="7.2"
 
 for V in $EXTRA_VERSIONS; do
     cd $V
-    docker build --pull --no-cache -f Dockerfile-ioncube_loader -t fduarte42/docker-php:$V-ioncube_loader .
-    docker build --pull --no-cache -f Dockerfile-sourceguardian -t fduarte42/docker-php:$V-sourceguardian .
-
     docker build --pull --no-cache -f Dockerfile-sqlsrv -t fduarte42/docker-php:$V-sqlsrv .
     docker build --no-cache -f Dockerfile-sqlsrv-debug -t fduarte42/docker-php:$V-sqlsrv-debug .
     cd ..

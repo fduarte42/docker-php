@@ -18,6 +18,9 @@ done
 EXTRA_VERSIONS="7.2 7.3"
 
 for V in $EXTRA_VERSIONS; do
+    docker push fduarte42/docker-php:$V-ioncube_loader
+    docker push fduarte42/docker-php:$V-sourceguardian
+
     docker push fduarte42/docker-php:$V-oci
     docker push fduarte42/docker-php:$V-oci-debug
 done
@@ -25,9 +28,6 @@ done
 EXTRA_VERSIONS="7.2"
 
 for V in $EXTRA_VERSIONS; do
-    docker push fduarte42/docker-php:$V-ioncube_loader
-    docker push fduarte42/docker-php:$V-sourceguardian
-
     docker push fduarte42/docker-php:$V-sqlsrv
     docker push fduarte42/docker-php:$V-sqlsrv-debug
 done
