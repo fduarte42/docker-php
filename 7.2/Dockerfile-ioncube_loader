@@ -1,6 +1,6 @@
 FROM fduarte42/docker-php:7.2
 
-# add chartdirector extension
+# add ioncube_loader extension
 COPY extension/ioncube_loaders_lin_x86-64.tar.gz /tmp/ioncube_loaders_lin_x86-64.tar.gz
 
 COPY add-ioncube_loader.sh /add-ioncube_loader.sh
