@@ -10,6 +10,16 @@ for V in $VERSIONS; do
     cd ..
 done
 
+EXTRA_VERSIONS="5.5"
+
+for V in $EXTRA_VERSIONS; do
+    cd $V
+    docker build --pull --no-cache -f Dockerfile-tex -t fduarte42/docker-php:$V-tex .
+    docker build --no-cache -f Dockerfile-tex-debug -t fduarte42/docker-php:$V-tex-debug .
+    cd ..
+done
+
+
 EXTRA_VERSIONS="7.0 7.1 7.2 7.3"
 
 for V in $EXTRA_VERSIONS; do

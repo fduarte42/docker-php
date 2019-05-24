@@ -1,0 +1,9 @@
+FROM fduarte42/docker-php:5.5
+
+# tahoma installer
+COPY scripts/ttf-ms-tahoma-installer.sh /ttf-ms-tahoma-installer.sh
+RUN bash /ttf-ms-tahoma-installer.sh && rm /ttf-ms-tahoma-installer.sh
+
+# add tex packages
+COPY add-tex.sh /add-tex.sh
+RUN bash /add-tex.sh && rm /add-tex.sh
