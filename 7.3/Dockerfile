@@ -15,10 +15,13 @@ COPY scripts/.bashrc /root/.bashrc
 COPY scripts/.bashrc /var/www/.bashrc
 RUN chown -R www-data:www-data /var/www/.bashrc
 COPY wkhtmltox_0.12.5-1.stretch_amd64.deb /tmp/wkhtmltox_0.12.5-1.stretch_amd64.deb
+ADD scripts/puppeteer/package.json scripts/puppeteer/package-lock.json /
 
 # build
 COPY build.sh /build.sh
 RUN bash /build.sh && rm /build.sh
+COPY add-puppeteer.sh /add-puppeteer.sh
+RUN bash /add-puppeteer.sh && rm /add-puppeteer.sh
 
 # post-build
 COPY scripts/cron-foreground /usr/local/bin/cron-foreground
