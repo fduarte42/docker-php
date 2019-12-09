@@ -1,4 +1,4 @@
-FROM php:7.1-apache
+FROM php:7.1-apache-stretch
 
 # Register the COMPOSER_HOME environment variable
 ENV COMPOSER_HOME /composer

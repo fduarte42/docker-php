@@ -84,6 +84,9 @@ php -r "if (hash('SHA384', file_get_contents('/tmp/composer-setup.php')) !== tri
 php /tmp/composer-setup.php --no-ansi --install-dir=/usr/local/bin --filename=composer && rm -rf /tmp/composer-setup.php
 mkdir /var/www/.composer && chown www-data:www-data /var/www/.composer
 
+# Install composer-require-checker
+composer global require maglnet/composer-require-checker
+
 apt-get install -y git unzip
 
 # Install ssh2 extension

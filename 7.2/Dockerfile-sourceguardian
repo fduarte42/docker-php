@@ -1,9 +1,0 @@
-FROM fduarte42/docker-php:7.2
-
-# add sourceguardian loader extension
-COPY extension/loaders.linux-x86_64.tar.gz /tmp/loaders.linux-x86_64.tar.gz
-
-COPY add-sourceguardian.sh /add-sourceguardian.sh
-RUN bash /add-sourceguardian.sh && rm /add-sourceguardian.sh
-
-RUN rm /tmp/loaders.linux-x86_64.tar.gz

@@ -101,15 +101,6 @@ apt-get autoremove -y
 dpkg --install /tmp/wkhtmltox_0.12.5-1.jessie_amd64.deb
 rm /tmp/wkhtmltox_0.12.5-1.jessie_amd64.deb
 
-# Install pngquant
-cd /tmp
-git clone --recursive https://github.com/pornel/pngquant.git
-cd pngquant
-make
-make install
-cd
-rm -Rf /tmp/pngquant
-
 # poppler
 apt-get install -y poppler-utils
 

@@ -1,0 +1,8 @@
+FROM fduarte42/docker-php:7.4
+
+# add sqlsrv packages
+COPY add-sqlsrv.sh /add-sqlsrv.sh
+RUN bash /add-sqlsrv.sh && rm /add-sqlsrv.sh
+
+# cleanup
+RUN rm -rf /var/lib/apt/lists/*

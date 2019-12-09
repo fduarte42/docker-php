@@ -1,0 +1,9 @@
+FROM fduarte42/docker-php:7.4
+
+# add ioncube_loader extension
+COPY extension/ioncube_loaders_lin_x86-64.tar.gz /tmp/ioncube_loaders_lin_x86-64.tar.gz
+
+COPY add-ioncube_loader.sh /add-ioncube_loader.sh
+RUN bash /add-ioncube_loader.sh && rm /add-ioncube_loader.sh
+
+RUN rm /tmp/ioncube_loaders_lin_x86-64.tar.gz

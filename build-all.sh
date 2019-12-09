@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-VERSIONS="5.3 5.5 5.6 7.0 7.1 7.2 7.3"
-VERSIONS="7.0 7.1 7.2 7.3"
+VERSIONS="5.3 5.5 5.6 7.0 7.1 7.2 7.3 7.4"
+VERSIONS="7.4"
 
 for V in $VERSIONS; do
     cd $V
@@ -35,7 +35,6 @@ EXTRA_VERSIONS="7.2 7.3"
 for V in $EXTRA_VERSIONS; do
     cd $V
     docker build --pull --no-cache -f Dockerfile-ioncube_loader -t fduarte42/docker-php:$V-ioncube_loader .
-    docker build --pull --no-cache -f Dockerfile-sourceguardian -t fduarte42/docker-php:$V-sourceguardian .
 
     docker build --pull --no-cache -f Dockerfile-oci -t fduarte42/docker-php:$V-oci .
     docker build --no-cache -f Dockerfile-oci-debug -t fduarte42/docker-php:$V-oci-debug .
