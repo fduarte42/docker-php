@@ -9,6 +9,8 @@ sed -i '/jessie-updates/d' /etc/apt/sources.list
 
 apt-get update
 apt-get upgrade -y
+pecl channel-update pecl.php.net
+
 apt-get install -y \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
@@ -26,6 +28,10 @@ docker-php-ext-install mysql pdo pdo_mysql soap exif bz2 imap gettext bcmath
 docker-php-ext-install -j$(nproc) iconv mcrypt
 docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/
 docker-php-ext-install -j$(nproc) gd
+
+# install imagick
+apt-get install -y libmagickwand-dev
+pecl install imagick-3.3.0
 
 # Install LDAP extension
 apt-get install -y libldap2-dev
