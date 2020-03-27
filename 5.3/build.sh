@@ -32,6 +32,7 @@ docker-php-ext-install -j$(nproc) gd
 # install imagick
 apt-get install -y libmagickwand-dev
 pecl install imagick-3.3.0
+echo "extension=imagick.so" > /usr/local/etc/php/conf.d/imagick.ini
 
 # Install LDAP extension
 apt-get install -y libldap2-dev
