@@ -4,4 +4,6 @@ if [ -e "/tmp/crontab" ]; then
     crontab -u www-data /tmp/crontab
 fi
 
+printenv | sed 's/^\(.*\)$/\1/g' > /etc/environment
+
 exec cron -f -L 15

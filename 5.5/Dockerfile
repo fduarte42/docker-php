@@ -15,6 +15,7 @@ COPY scripts/.bashrc /root/.bashrc
 COPY scripts/.bashrc /var/www/.bashrc
 RUN chown -R www-data:www-data /var/www/.bashrc
 COPY wkhtmltox_0.12.5-1.jessie_amd64.deb /tmp/wkhtmltox_0.12.5-1.jessie_amd64.deb
+COPY ssmtp_2.64-8_amd64.deb /tmp/ssmtp_2.64-8_amd64.deb
 
 # build
 COPY build.sh /build.sh

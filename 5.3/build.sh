@@ -59,7 +59,9 @@ a2enmod proxy
 a2enmod proxy_http
 
 # Install SSMTP
-apt-get install -y ssmtp
+apt-get install -y libgnutls-openssl27
+dpkg --install /tmp/ssmtp_2.64-8_amd64.deb
+rm /tmp/ssmtp_2.64-8_amd64.deb
 echo 'sendmail_path = "/usr/sbin/ssmtp -t"' > /usr/local/etc/php/conf.d/mail.ini
 
 # Set the time zone to the local time zone

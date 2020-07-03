@@ -57,7 +57,9 @@ a2enmod proxy
 a2enmod proxy_http
 
 # Install SSMTP
-apt-get install -y ssmtp
+apt-get install -y libgnutls-openssl27
+dpkg --install /tmp/ssmtp_2.64-8b2_amd64.deb
+rm /tmp/ssmtp_2.64-8b2_amd64.deb
 echo 'sendmail_path = "/usr/sbin/ssmtp -t"' > /usr/local/etc/php/conf.d/mail.ini
 
 # Set the time zone to the local time zone
@@ -153,5 +155,9 @@ chmod 700 /var/www/.gnupg
 
 # supervisord
 apt-get install -y supervisor
+
+# rsyslog
+apt-get install -y rsyslog
+sed -i "s/module(load=\"imklog\")/#module(load=\"imklog\")/" /etc/rsyslog.conf
 
 exit 0

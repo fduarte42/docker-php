@@ -2,6 +2,7 @@
 set -e
 
 # XDEBUG
+pecl channel-update pecl.php.net
 pecl -d preferred_state=beta install xdebug
 echo "zend_extension=$(find /usr/local/lib/php/extensions/ -name xdebug.so)" > /usr/local/etc/php/conf.d/xdebug.ini
 echo "xdebug.remote_autostart=on" >> /usr/local/etc/php/conf.d/xdebug.ini
