@@ -2,6 +2,7 @@
 set -e
 
 VERSIONS="5.3 5.5 5.6 7.0 7.1 7.2 7.3 7.4"
+VERSIONS="7.2"
 
 for V in $VERSIONS; do
     cd $V
@@ -9,6 +10,7 @@ for V in $VERSIONS; do
     docker build --no-cache -f Dockerfile-debug -t fduarte42/docker-php:$V-debug .
     cd ..
 done
+exit
 
 EXTRA_VERSIONS="5.5"
 
