@@ -8,23 +8,23 @@ for V in $VERSIONS; do
     docker push fduarte42/docker-php:$V
     docker push fduarte42/docker-php:$V-debug
 done
-exit
 
-EXTRA_VERSIONS="5.5"
-
-for V in $EXTRA_VERSIONS; do
-    docker push fduarte42/docker-php:$V-tex
-    docker push fduarte42/docker-php:$V-tex-debug
-done
-
-EXTRA_VERSIONS="7.0 7.1 7.2 7.3 7.4"
-
-for V in $EXTRA_VERSIONS; do
-    docker push fduarte42/docker-php:$V-chartdirector
-    docker push fduarte42/docker-php:$V-chartdirector-debug
-done
+#EXTRA_VERSIONS="5.5"
+#
+#for V in $EXTRA_VERSIONS; do
+#    docker push fduarte42/docker-php:$V-tex
+#    docker push fduarte42/docker-php:$V-tex-debug
+#done
+#
+#EXTRA_VERSIONS="7.0 7.1 7.2 7.3 7.4"
+#
+#for V in $EXTRA_VERSIONS; do
+#    docker push fduarte42/docker-php:$V-chartdirector
+#    docker push fduarte42/docker-php:$V-chartdirector-debug
+#done
 
 EXTRA_VERSIONS="7.2 7.3 7.4"
+EXTRA_VERSIONS="7.2"
 
 for V in $EXTRA_VERSIONS; do
     docker push fduarte42/docker-php:$V-ioncube_loader
@@ -33,9 +33,9 @@ for V in $EXTRA_VERSIONS; do
     docker push fduarte42/docker-php:$V-oci-debug
 done
 
-EXTRA_VERSIONS="7.2"
-
-for V in $EXTRA_VERSIONS; do
-    docker push fduarte42/docker-php:$V-sqlsrv
-    docker push fduarte42/docker-php:$V-sqlsrv-debug
-done
+#EXTRA_VERSIONS="7.2"
+#
+#for V in $EXTRA_VERSIONS; do
+#    docker push fduarte42/docker-php:$V-sqlsrv
+#    docker push fduarte42/docker-php:$V-sqlsrv-debug
+#done

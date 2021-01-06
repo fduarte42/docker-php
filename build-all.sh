@@ -10,27 +10,28 @@ for V in $VERSIONS; do
     docker build --no-cache -f Dockerfile-debug -t fduarte42/docker-php:$V-debug .
     cd ..
 done
-exit
 
-EXTRA_VERSIONS="5.5"
 
-for V in $EXTRA_VERSIONS; do
-    cd $V
-    docker build --no-cache -f Dockerfile-tex -t fduarte42/docker-php:$V-tex .
-    docker build --no-cache -f Dockerfile-tex-debug -t fduarte42/docker-php:$V-tex-debug .
-    cd ..
-done
-
-EXTRA_VERSIONS="7.0 7.1 7.2 7.3 7.4"
-
-for V in $EXTRA_VERSIONS; do
-    cd $V
-    docker build --no-cache -f Dockerfile-chartdirector -t fduarte42/docker-php:$V-chartdirector .
-    docker build --no-cache -f Dockerfile-chartdirector-debug -t fduarte42/docker-php:$V-chartdirector-debug .
-    cd ..
-done
+#EXTRA_VERSIONS="5.5"
+#
+#for V in $EXTRA_VERSIONS; do
+#    cd $V
+#    docker build --no-cache -f Dockerfile-tex -t fduarte42/docker-php:$V-tex .
+#    docker build --no-cache -f Dockerfile-tex-debug -t fduarte42/docker-php:$V-tex-debug .
+#    cd ..
+#done
+#
+#EXTRA_VERSIONS="7.0 7.1 7.2 7.3 7.4"
+#
+#for V in $EXTRA_VERSIONS; do
+#    cd $V
+#    docker build --no-cache -f Dockerfile-chartdirector -t fduarte42/docker-php:$V-chartdirector .
+#    docker build --no-cache -f Dockerfile-chartdirector-debug -t fduarte42/docker-php:$V-chartdirector-debug .
+#    cd ..
+#done
 
 EXTRA_VERSIONS="7.2 7.3 7.4"
+EXTRA_VERSIONS="7.2"
 
 for V in $EXTRA_VERSIONS; do
     cd $V
@@ -41,13 +42,13 @@ for V in $EXTRA_VERSIONS; do
     cd ..
 done
 
-EXTRA_VERSIONS="7.2"
-
-for V in $EXTRA_VERSIONS; do
-    cd $V
-    docker build --no-cache -f Dockerfile-sqlsrv -t fduarte42/docker-php:$V-sqlsrv .
-    docker build --no-cache -f Dockerfile-sqlsrv-debug -t fduarte42/docker-php:$V-sqlsrv-debug .
-    cd ..
-done
+#EXTRA_VERSIONS="7.2"
+#
+#for V in $EXTRA_VERSIONS; do
+#    cd $V
+#    docker build --no-cache -f Dockerfile-sqlsrv -t fduarte42/docker-php:$V-sqlsrv .
+#    docker build --no-cache -f Dockerfile-sqlsrv-debug -t fduarte42/docker-php:$V-sqlsrv-debug .
+#    cd ..
+#done
 
 exit 0
