@@ -2,7 +2,7 @@
 set -e
 
 VERSIONS="5.3 5.5 5.6 7.0 7.1 7.2 7.3 7.4"
-VERSIONS="7.2"
+VERSIONS="7.2 7.4"
 
 for V in $VERSIONS; do
     docker push fduarte42/docker-php:$V
@@ -24,7 +24,7 @@ done
 #done
 
 EXTRA_VERSIONS="7.2 7.3 7.4"
-EXTRA_VERSIONS="7.2"
+EXTRA_VERSIONS="7.2 7.4"
 
 for V in $EXTRA_VERSIONS; do
     docker push fduarte42/docker-php:$V-ioncube_loader

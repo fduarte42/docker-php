@@ -20,12 +20,14 @@ apt-get install -y \
     libmemcached-dev \
     libmemcached11 \
     libmemcachedutil2 \
-    libzip-dev
+    libzip-dev \
+    libmagickwand-dev
 PHP_OPENSSL=yes docker-php-ext-configure imap --with-kerberos --with-imap-ssl
 docker-php-ext-install mysqli pdo pdo_mysql soap exif bz2 imap gettext bcmath
-# docker-php-ext-install -j$(nproc) iconv
-# docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/
 docker-php-ext-install -j$(nproc) gd
+
+# imagick
+pecl install imagick && docker-php-ext-enable imagick
 
 # Memcached
 pecl install memcached
@@ -83,7 +85,7 @@ curl -o /tmp/composer-setup.sig https://composer.github.io/installer.sig
 php -r "if (hash('SHA384', file_get_contents('/tmp/composer-setup.php')) !== trim(file_get_contents('/tmp/composer-setup.sig'))) { unlink('/tmp/composer-setup.php'); echo 'Invalid installer' . PHP_EOL; exit(1); }"
 
 # Install Composer
-php /tmp/composer-setup.php --no-ansi --install-dir=/usr/local/bin --filename=composer && rm -rf /tmp/composer-setup.php
+php /tmp/composer-setup.php --1 --no-ansi --install-dir=/usr/local/bin --filename=composer && rm -rf /tmp/composer-setup.php
 mkdir /var/www/.composer && chown www-data:www-data /var/www/.composer
 
 # Install composer-require-checker
@@ -165,5 +167,9 @@ chmod 700 /var/www/.gnupg
 
 # supervisord
 apt-get install -y supervisor
+
+# rsyslog
+apt-get install -y rsyslog
+sed -i "s/module(load=\"imklog\")/#module(load=\"imklog\")/" /etc/rsyslog.conf
 
 exit 0
