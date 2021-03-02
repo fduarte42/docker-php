@@ -123,8 +123,8 @@ echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula \
 apt-get install -y build-essential xorg libssl-dev libxrender-dev libjpeg62 fontconfig ttf-mscorefonts-installer xfonts-base xfonts-75dpi curl wget
 apt-get clean
 apt-get autoremove -y
-dpkg --install /tmp/wkhtmltox_0.12.5-1.stretch_amd64.deb
-rm /tmp/wkhtmltox_0.12.5-1.stretch_amd64.deb
+dpkg --install /tmp/wkhtmltox_0.12.6-1.stretch_amd64.deb
+rm /tmp/wkhtmltox_0.12.6-1.stretch_amd64.deb
 apt-get install xvfb
 
 # Install pngquant

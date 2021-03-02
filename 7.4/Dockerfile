@@ -14,7 +14,7 @@ COPY config/keyboard /etc/default/keyboard
 COPY scripts/.bashrc /root/.bashrc
 COPY scripts/.bashrc /var/www/.bashrc
 RUN chown -R www-data:www-data /var/www/.bashrc
-COPY wkhtmltox_0.12.5-1.stretch_amd64.deb /tmp/wkhtmltox_0.12.5-1.stretch_amd64.deb
+COPY wkhtmltox_0.12.6-1.stretch_amd64.deb /tmp/wkhtmltox_0.12.6-1.stretch_amd64.deb
 COPY ssmtp_2.64-8ubuntu2_amd64.deb /tmp/ssmtp_2.64-8ubuntu2_amd64.deb
 ADD scripts/puppeteer/package.json scripts/puppeteer/package-lock.json /
 
