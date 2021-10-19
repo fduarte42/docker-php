@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-VERSIONS="5.3 5.5 5.6 7.0 7.1 7.2 7.3 7.4"
-VERSIONS="7.2"
+#VERSIONS="5.3 5.5 5.6 7.0 7.1 7.2 7.3 7.4"
+VERSIONS="7.2 7.4"
 
 for V in $VERSIONS; do
     cd $V
@@ -30,8 +30,8 @@ done
 #    cd ..
 #done
 
-EXTRA_VERSIONS="7.2 7.3 7.4"
-EXTRA_VERSIONS="7.2"
+#EXTRA_VERSIONS="7.2 7.3 7.4"
+EXTRA_VERSIONS="7.2 7.4"
 
 for V in $EXTRA_VERSIONS; do
     cd $V
