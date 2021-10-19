@@ -21,11 +21,12 @@ apt-get install -y \
     libmemcached11 \
     libmemcachedutil2 \
     libzip-dev \
-    libmagickwand-dev
+    libmagickwand-dev \
+    libpq-dev
 PHP_OPENSSL=yes docker-php-ext-configure imap --with-kerberos --with-imap-ssl
 docker-php-ext-install mysqli pgsql pdo pdo_mysql pdo_pgsql soap exif bz2 imap gettext bcmath
 docker-php-ext-install -j$(nproc) iconv
-docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/
+docker-php-ext-configure gd --with-freetype --with-jpeg
 docker-php-ext-install -j$(nproc) gd
 
 # imagick
@@ -97,16 +98,7 @@ apt-get install -y git unzip
 
 # Install ssh2 extension
 apt-get install -y libssh2-1-dev
-#pecl -d preferred_state=alpha install ssh2-1.1.2
-cd /tmp
-git clone https://git.php.net/repository/pecl/networking/ssh2.git
-cd ssh2
-phpize
-./configure
-make
-make install
-cd
-rm -Rf /tmp/ssh2
+pecl -d preferred_state=beta install ssh2
 echo "extension=ssh2.so" > /usr/local/etc/php/conf.d/ssh2.ini
 
 # Install xsl extension
