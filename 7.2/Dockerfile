@@ -1,4 +1,5 @@
-FROM php:7.2-apache-stretch
+FROM php:7.2-apache-buster
+ARG TARGETARCH
 
 # Register the COMPOSER_HOME environment variable
 ENV COMPOSER_HOME /composer
@@ -14,9 +15,8 @@ COPY config/keyboard /etc/default/keyboard
 COPY scripts/.bashrc /root/.bashrc
 COPY scripts/.bashrc /var/www/.bashrc
 RUN chown -R www-data:www-data /var/www/.bashrc
-COPY wkhtmltox_0.12.6-1.stretch_amd64.deb /tmp/wkhtmltox_0.12.6-1.stretch_amd64.deb
-COPY ssmtp_2.64-8ubuntu2_amd64.deb /tmp/ssmtp_2.64-8ubuntu2_amd64.deb
-ADD scripts/puppeteer/package.json scripts/puppeteer/package-lock.json /
+COPY wkhtmltox_0.12.6-1.buster_$TARGETARCH.deb /tmp/wkhtmltox.deb
+COPY ssmtp_2.64-8ubuntu2_$TARGETARCH.deb /tmp/ssmtp.deb
 
 # build
 COPY build.sh /build.sh

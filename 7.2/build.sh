@@ -59,8 +59,8 @@ a2enmod proxy_http
 
 # Install SSMTP
 apt-get install -y libgnutls-openssl27
-dpkg --install /tmp/ssmtp_2.64-8ubuntu2_amd64.deb
-rm /tmp/ssmtp_2.64-8ubuntu2_amd64.deb
+dpkg --install /tmp/ssmtp.deb
+rm /tmp/ssmtp.deb
 echo 'sendmail_path = "/usr/sbin/ssmtp -t"' > /usr/local/etc/php/conf.d/mail.ini
 
 # Set the time zone to the local time zone
@@ -112,8 +112,8 @@ echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula \
 apt-get install -y build-essential xorg libssl-dev libxrender-dev libjpeg62 fontconfig ttf-mscorefonts-installer xfonts-base xfonts-75dpi curl wget
 apt-get clean
 apt-get autoremove -y
-dpkg --install /tmp/wkhtmltox_0.12.6-1.stretch_amd64.deb
-rm /tmp/wkhtmltox_0.12.6-1.stretch_amd64.deb
+dpkg --install /tmp/wkhtmltox.deb
+rm /tmp/wkhtmltox.deb
 apt-get install xvfb
 
 # Install pngquant

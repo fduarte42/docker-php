@@ -1,4 +1,5 @@
 FROM fduarte42/docker-php:7.2
+ARG TARGETARCH
 
 # add sqlsrv packages
 COPY add-sqlsrv.sh /add-sqlsrv.sh

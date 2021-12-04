@@ -3,8 +3,17 @@ set -e
 
 EXTENSION_DIR=$(php -r "echo ini_get('extension_dir');")
 
+# extract libs and sdk
 cd /tmp
-tar xzf /tmp/ioncube_loaders_lin_x86-64.tar.gz
+
+if [ "$TARGETARCH" = "arm64" ]; then
+  tar xzf ioncube_loaders_lin_aarch64.tar.gz
+fi
+
+if [ "$TARGETARCH" = "amd64" ]; then
+  tar xzf /tmp/ioncube_loaders_lin_x86-64.tar.gz
+fi
+
 cp -R /tmp/ioncube/* ${EXTENSION_DIR}
 rm -R /tmp/ioncube
 

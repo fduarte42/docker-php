@@ -1,9 +1,10 @@
 FROM fduarte42/docker-php:7.2-debug
+ARG TARGETARCH
 
 # add chartdirector extension
-COPY extension/chartdir_php_linux_64.tar.gz /tmp/
+COPY extension/chartdir_php_linux_*.tar.gz /tmp/
 
 COPY add-chartdirector.sh /add-chartdirector.sh
 RUN bash /add-chartdirector.sh && rm /add-chartdirector.sh
 
-RUN rm /tmp/chartdir_php_linux_64.tar.gz
+RUN rm /tmp/chartdir_php_linux_*.tar.gz

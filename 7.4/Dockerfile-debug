@@ -1,4 +1,5 @@
 FROM fduarte42/docker-php:7.4
+ARG TARGETARCH
 
 # add debug packages
 COPY add-debug.sh /add-debug.sh
