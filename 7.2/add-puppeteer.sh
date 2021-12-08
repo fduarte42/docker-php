@@ -11,6 +11,10 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash
 curl -sL https://deb.nodesource.com/setup_12.x | bash -
 apt-get install -y nodejs
 
+mkdir /root/.npm
+mkdir /var/www/.npm
+chown www-data:www-data /var/www/.npm
+
 # install wait-for-it
 curl -sL https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh > /usr/sbin/wait-for-it.sh
 chmod +x /usr/sbin/wait-for-it.sh

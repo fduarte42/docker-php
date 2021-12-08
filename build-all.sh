@@ -2,7 +2,7 @@
 set -e
 
 #VERSIONS="7.2 7.4 8.0 8.1"
-VERSIONS="7.2 7.4"
+VERSIONS="8.0"
 
 for V in $VERSIONS; do
     cd $V
