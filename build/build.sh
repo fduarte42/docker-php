@@ -148,6 +148,11 @@ mkdir /var/www/.gnupg
 chown -R www-data:www-data /var/www/.gnupg
 chmod 700 /var/www/.gnupg
 
+# config
+mkdir /var/www/.config
+chown -R www-data:www-data /var/www/.config
+chmod 744 /var/www/.config
+
 # rsyslog
 sed -i "s/module(load=\"imklog\")/#module(load=\"imklog\")/" /etc/rsyslog.conf
 
