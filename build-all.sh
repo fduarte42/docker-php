@@ -3,7 +3,6 @@ set -e
 
 cd build
 VERSIONS="7.2 7.4 8.0 8.1"
-VERSIONS="8.1"
 
 for V in $VERSIONS; do
     # normal version
