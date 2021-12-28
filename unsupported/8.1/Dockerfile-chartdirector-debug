@@ -1,0 +1,10 @@
+FROM fduarte42/docker-php:8.1-chartdirector
+ARG TARGETARCH
+
+# add debug packages
+COPY add-debug.sh /add-debug.sh
+RUN bash /add-debug.sh && rm /add-debug.sh
+
+# cleanup
+RUN rm -rf /var/lib/apt/lists/*
+

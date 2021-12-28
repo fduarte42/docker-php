@@ -1,0 +1,12 @@
+FROM fduarte42/docker-php:7.4
+ARG TARGETARCH
+
+# add oci packages
+RUN mkdir -p /opt/oracle
+COPY driver/oracle/* /tmp/
+
+COPY add-oci.sh /add-oci.sh
+RUN bash /add-oci.sh && rm /add-oci.sh
+
+# cleanup
+RUN rm -rf /var/lib/apt/lists/*

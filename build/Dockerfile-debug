@@ -1,0 +1,8 @@
+ARG PHP_VERSION
+FROM fduarte42/docker-php:${PHP_VERSION}
+ARG TARGETARCH
+ARG PHP_VERSION
+
+# add debug packages
+COPY add-debug.sh /add-debug.sh
+RUN bash /add-debug.sh && rm /add-debug.sh

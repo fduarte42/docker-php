@@ -1,0 +1,12 @@
+ARG PHP_VERSION
+FROM fduarte42/docker-php:${PHP_VERSION}
+ARG TARGETARCH
+ARG PHP_VERSION
+
+# add chartdirector extension
+COPY extension/loaders.linux-*.tar.bz2 /tmp/
+
+COPY add-sourceguardian.sh /add-sourceguardian.sh
+RUN bash /add-sourceguardian.sh && rm /add-sourceguardian.sh
+
+RUN rm /tmp/loaders.linux-*.tar.bz2

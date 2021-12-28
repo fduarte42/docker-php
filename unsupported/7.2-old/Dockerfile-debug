@@ -1,0 +1,6 @@
+FROM fduarte42/docker-php:7.2
+ARG TARGETARCH
+
+# add debug packages
+COPY add-debug.sh /add-debug.sh
+RUN bash /add-debug.sh && rm /add-debug.sh

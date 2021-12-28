@@ -1,0 +1,11 @@
+ARG PHP_VERSION
+FROM fduarte42/docker-php:${PHP_VERSION}
+ARG TARGETARCH
+ARG PHP_VERSION
+
+# add sqlsrv packages
+COPY add-sqlsrv.sh /add-sqlsrv.sh
+RUN bash /add-sqlsrv.sh && rm /add-sqlsrv.sh
+
+# cleanup
+RUN rm -rf /var/lib/apt/lists/*

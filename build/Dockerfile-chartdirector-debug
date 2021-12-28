@@ -1,0 +1,12 @@
+ARG PHP_VERSION
+FROM fduarte42/docker-php:${PHP_VERSION}-debug
+ARG TARGETARCH
+ARG PHP_VERSION
+
+# add chartdirector extension
+COPY extension/chartdir_php_linux_*.tar.gz /tmp/
+
+COPY add-chartdirector.sh /add-chartdirector.sh
+RUN bash /add-chartdirector.sh && rm /add-chartdirector.sh
+
+RUN rm /tmp/chartdir_php_linux_*.tar.gz
