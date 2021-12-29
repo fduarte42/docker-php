@@ -64,6 +64,13 @@ apt install -y \
 
 update-alternatives --set php /usr/bin/php${PHP_VERSION}
 
+# docker-template compatibility
+mkdir -p /usr/local/etc/php/conf.d
+touch /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini
+ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /usr/local/etc/php/conf.d/zzz-custom.ini
+ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /etc/php/${PHP_VERSION}/apache2/conf.d
+ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /etc/php/${PHP_VERSION}/cli/conf.d
+
 # apcu
 if [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
   apt install -y \
