@@ -79,6 +79,13 @@ echo "display_errors=off" > /etc/php/${PHP_VERSION}/mods-available/errors.ini
 echo "log_errors=on" >> /etc/php/${PHP_VERSION}/mods-available/errors.ini
 phpenmod errors
 
+# apache enable .htaccess
+echo "<Directory /var/www/html>" > /etc/apache2/conf-available/enable-htaccess.conf
+echo "    AllowOverride All" >> /etc/apache2/conf-available/enable-htaccess.conf
+echo "</Directory>" >> /etc/apache2/conf-available/enable-htaccess.conf
+a2enconf enable-htaccess
+
+# apache enable modules
 a2enmod rewrite
 a2enmod headers
 a2enmod expires
