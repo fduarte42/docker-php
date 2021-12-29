@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-BASE_IMAGENAME=registry.gitlab.com/it-cocktail/docker-php
+#BASE_IMAGENAME=registry.gitlab.com/it-cocktail/docker-php
+BASE_IMAGENAME=fduarte42/docker-php
 PLATFORMS=linux/amd64,linux/arm64
 
 cd build

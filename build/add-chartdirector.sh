@@ -13,8 +13,9 @@ if [ "$TARGETARCH" = "amd64" ]; then
   tar xzf /tmp/chartdir_php_linux_64.tar.gz
 fi
 
-cp -R /tmp/ChartDirector/lib/* ${EXTENSION_DIR}
+cp -R /tmp/ChartDirector/lib/* $EXTENSION_DIR
 rm -R /tmp/ChartDirector
 
-echo "extension=phpchartdir${PHP_VERSION/\.//}0.dll" > /etc/php/${PHP_VERSION}/mods-available/chartdirector.ini
+echo "include_path=.:/usr/share/php:$EXTENSION_DIR" > /etc/php/${PHP_VERSION}/mods-available/chartdirector.ini
+echo "extension=phpchartdir${PHP_VERSION/\./}0.dll" >> /etc/php/${PHP_VERSION}/mods-available/chartdirector.ini
 phpenmod chartdirector
