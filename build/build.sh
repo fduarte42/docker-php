@@ -40,6 +40,7 @@ apt install -y \
   php${PHP_VERSION}-decimal \
   php${PHP_VERSION}-gd \
   php${PHP_VERSION}-gmagick \
+  php${PHP_VERSION}-http \
   php${PHP_VERSION}-imap \
   php${PHP_VERSION}-intl \
   php${PHP_VERSION}-ldap \
