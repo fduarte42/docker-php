@@ -40,7 +40,6 @@ apt install -y \
   php${PHP_VERSION}-decimal \
   php${PHP_VERSION}-gd \
   php${PHP_VERSION}-gmagick \
-  php${PHP_VERSION}-http \
   php${PHP_VERSION}-imap \
   php${PHP_VERSION}-intl \
   php${PHP_VERSION}-ldap \
@@ -49,7 +48,6 @@ apt install -y \
   php${PHP_VERSION}-mysql \
   php${PHP_VERSION}-opcache \
   php${PHP_VERSION}-pgsql \
-  php${PHP_VERSION}-raphf \
   php${PHP_VERSION}-soap \
   php${PHP_VERSION}-sqlite3 \
   php${PHP_VERSION}-ssh2 \
@@ -75,6 +73,13 @@ ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /etc/php/${PHP_VERSI
 ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /etc/php/${PHP_VERSION}/cli/conf.d
 ln -s /usr/bin/php /usr/local/bin/php
 ln -s /usr/bin/wkhtmltopdf /usr/local/bin/wkhtmltopdf
+
+# php http
+if [[ $PHP_VERSION =~ (7\.2|7\.4|8\.0) ]]; then
+  apt install -y \
+    php${PHP_VERSION}-http \
+    php${PHP_VERSION}-raphf
+fi
 
 # apcu
 if [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
