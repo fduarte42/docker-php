@@ -78,7 +78,8 @@ ln -s /usr/bin/wkhtmltopdf /usr/local/bin/wkhtmltopdf
 if [[ $PHP_VERSION =~ (7\.2|7\.4|8\.0) ]]; then
   apt install -y \
     php${PHP_VERSION}-http \
-    php${PHP_VERSION}-raphf
+    php${PHP_VERSION}-raphf \
+    php${PHP_VERSION}-propro
 fi
 
 # apcu
