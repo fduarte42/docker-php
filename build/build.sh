@@ -75,11 +75,23 @@ ln -s /usr/bin/php /usr/local/bin/php
 ln -s /usr/bin/wkhtmltopdf /usr/local/bin/wkhtmltopdf
 
 # php http
-if [[ $PHP_VERSION =~ (7\.2|7\.4|8\.0) ]]; then
+if [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
   apt install -y \
     php${PHP_VERSION}-http \
     php${PHP_VERSION}-raphf \
     php${PHP_VERSION}-propro
+elif [[ $PHP_VERSION =~ (8\.0) ]]; then
+  apt install -y \
+    php${PHP_VERSION}-http \
+    php${PHP_VERSION}-raphf
+elif [[ $PHP_VERSION =~ (8\.1) ]]; then
+  apt install -y \
+    php${PHP_VERSION}-pecl-http \
+    php${PHP_VERSION}-raphf
+
+  pecl install pecl_http
+  echo "extension=http.so" > /etc/php/${PHP_VERSION}/mods-available/http.ini
+  phpenmod -v ${PHP_VERSION} http
 fi
 
 # apcu

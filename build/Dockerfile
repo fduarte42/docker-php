@@ -4,7 +4,7 @@ ARG PHP_VERSION
 
 # add puppeteer config
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD true
-ENV PUPPETEER_EXECUTABLE_PATH /usr/bin/chromium-browser
+ENV PUPPETEER_EXECUTABLE_PATH /usr/bin/chromium
 
 # Register the COMPOSER_HOME environment variable
 ENV COMPOSER_HOME /composer
