@@ -85,13 +85,14 @@ elif [[ $PHP_VERSION =~ (8\.0) ]]; then
     php${PHP_VERSION}-http \
     php${PHP_VERSION}-raphf
 elif [[ $PHP_VERSION =~ (8\.1) ]]; then
-  apt install -y \
-    php${PHP_VERSION}-pecl-http \
-    php${PHP_VERSION}-raphf
+  #apt install -y \
+  #  php${PHP_VERSION}-pecl-http \
+  #  php${PHP_VERSION}-raphf
 
-  pecl install pecl_http
-  echo "extension=http.so" > /etc/php/${PHP_VERSION}/mods-available/http.ini
-  phpenmod -v ${PHP_VERSION} http
+  #pecl install pecl_http
+  #echo "extension=http.so" > /etc/php/${PHP_VERSION}/mods-available/http.ini
+  #phpenmod -v ${PHP_VERSION} http
+  :
 fi
 
 # apcu
