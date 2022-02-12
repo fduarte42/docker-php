@@ -30,6 +30,7 @@ apt install -y \
   keychain \
   libapache2-mod-php${PHP_VERSION} \
   locales \
+  imagemagick \
   nodejs \
   npm \
   php${PHP_VERSION} \
@@ -39,7 +40,7 @@ apt install -y \
   php${PHP_VERSION}-curl \
   php${PHP_VERSION}-decimal \
   php${PHP_VERSION}-gd \
-  php${PHP_VERSION}-gmagick \
+  php${PHP_VERSION}-imagick \
   php${PHP_VERSION}-imap \
   php${PHP_VERSION}-intl \
   php${PHP_VERSION}-ldap \
