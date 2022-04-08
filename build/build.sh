@@ -86,14 +86,27 @@ elif [[ $PHP_VERSION =~ (8\.0) ]]; then
     php${PHP_VERSION}-http \
     php${PHP_VERSION}-raphf
 elif [[ $PHP_VERSION =~ (8\.1) ]]; then
-  #apt install -y \
-  #  php${PHP_VERSION}-pecl-http \
-  #  php${PHP_VERSION}-raphf
+  apt install -y \
+    php${PHP_VERSION}-dev \
+    zlib1g-dev \
+    libcurl4-gnutls-dev \
+    libicu-dev \
+    libgnutls28-dev
 
-  #pecl install pecl_http
-  #echo "extension=http.so" > /etc/php/${PHP_VERSION}/mods-available/http.ini
-  #phpenmod -v ${PHP_VERSION} http
-  :
+  yes '' | pecl install raphf
+  echo "extension=raphf.so" > /etc/php/${PHP_VERSION}/mods-available/raphf.ini
+  phpenmod -v ${PHP_VERSION} raphf
+
+  yes '' | pecl install pecl_http
+  echo "extension=http.so" > /etc/php/${PHP_VERSION}/mods-available/http.ini
+  phpenmod -v ${PHP_VERSION} http
+
+  apt remove -y \
+      php${PHP_VERSION}-dev \
+      zlib1g-dev \
+      libcurl4-gnutls-dev \
+      libicu-dev \
+      libgnutls28-dev
 fi
 
 # apcu
