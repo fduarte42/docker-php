@@ -18,12 +18,12 @@ for V in $VERSIONS; do
         docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V -f Dockerfile-ioncube_loader -t $BASE_IMAGENAME:$V-ioncube_loader .
     fi
 
-    if [[ $V =~ (7\.2|7\.4|8\.0) ]]; then
+    if [[ $V =~ (7\.2|7\.4|8\.0|8\.1) ]]; then
         # sourceguardian
         docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V -f Dockerfile-sourceguardian -t $BASE_IMAGENAME:$V-sourceguardian .
     fi
 
-    if [[ $V =~ (7\.2|7\.4|8\.0) ]]; then
+    if [[ $V =~ (7\.2|7\.4|8\.0|8\.1) ]]; then
         # chartdirector
         docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V -f Dockerfile-chartdirector -t $BASE_IMAGENAME:$V-chartdirector .
         docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V -f Dockerfile-chartdirector-debug -t $BASE_IMAGENAME:$V-chartdirector-debug .
@@ -36,7 +36,6 @@ for V in $VERSIONS; do
     # sqlsrv
     #docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V -f Dockerfile-sqlsrv -t $BASE_IMAGENAME:$V-sqlsrv .
     #docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V -f Dockerfile-sqlsrv-debug -t $BASE_IMAGENAME:$V-sqlsrv-debug .
-
 done
 
 cd ..
