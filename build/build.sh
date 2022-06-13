@@ -62,7 +62,9 @@ apt install -y \
   supervisor \
   ttf-mscorefonts-installer \
   unzip \
-  wkhtmltopdf
+  wkhtmltopdf \
+  xfonts-75dpi \
+  yarn
 
 update-alternatives --set php /usr/bin/php${PHP_VERSION}
 
@@ -184,6 +186,17 @@ mkdir /var/www/.composer && chown www-data:www-data /var/www/.composer
 
 # Install composer-require-checker
 composer global require maglnet/composer-require-checker
+
+# replace wkthtmltopdf with patched qt version
+if [ "$TARGETARCH" = "arm64" ]; then
+  dpkg -i /tmp/wkhtmltox_0.12.6-1.buster_arm64.deb
+fi
+
+if [ "$TARGETARCH" = "amd64" ]; then
+  dpkg -i /tmp/wkhtmltox_0.12.6-1.buster_amd64.deb
+fi
+
+rm /tmp/wkhtmltox_0.12.6-1.buster_*.deb
 
 # setup keychain
 mkdir /root/.ssh
