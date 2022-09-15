@@ -6,7 +6,7 @@ BASE_IMAGENAME=fduarte42/docker-php
 PLATFORMS=linux/amd64,linux/arm64
 
 cd build
-VERSIONS="7.2 7.4 8.0 8.1 8.2"
+VERSIONS="7.2 7.4 8.0 8.1"
 
 for V in $VERSIONS; do
     # normal version
