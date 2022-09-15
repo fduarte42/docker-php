@@ -83,11 +83,11 @@ if [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
     php${PHP_VERSION}-http \
     php${PHP_VERSION}-raphf \
     php${PHP_VERSION}-propro
-elif [[ $PHP_VERSION =~ (8\.0) ]]; then
+elif [[ $PHP_VERSION =~ (8\.0|8\.1) ]]; then
   apt install -y \
     php${PHP_VERSION}-http \
     php${PHP_VERSION}-raphf
-elif [[ $PHP_VERSION =~ (8\.1) ]]; then
+elif [[ $PHP_VERSION =~ (8\.2) ]]; then
   apt install -y \
     php${PHP_VERSION}-dev \
     zlib1g-dev \
@@ -165,11 +165,11 @@ echo "Europe/Berlin" > /etc/timezone && dpkg-reconfigure --frontend noninteracti
 echo "date.timezone = Europe/Berlin" > /etc/php/${PHP_VERSION}/mods-available/timezone.ini
 phpenmod timezone
 
-# PHP Typo3 Settings
-echo "always_populate_raw_post_data = -1" > /etc/php/${PHP_VERSION}/mods-available/typo3.ini
-echo "max_execution_time = 240" >> /etc/php/${PHP_VERSION}/mods-available/typo3.ini
-echo "max_input_vars = 1500" >> /etc/php/${PHP_VERSION}/mods-available/typo3.ini
-phpenmod typo3
+# PHP Max Input Settings
+echo "always_populate_raw_post_data = -1" > /etc/php/${PHP_VERSION}/mods-available/max_input.ini
+echo "max_execution_time = 240" >> /etc/php/${PHP_VERSION}/mods-available/max_input.ini
+echo "max_input_vars = 1500" >> /etc/php/${PHP_VERSION}/mods-available/max_input.ini
+phpenmod max_input
 
 # Setup the Composer installer
 curl -o /tmp/composer-setup.php https://getcomposer.org/installer

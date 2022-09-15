@@ -6,17 +6,17 @@ BASE_IMAGENAME=fduarte42/docker-php
 PLATFORMS=linux/amd64,linux/arm64
 
 cd build
-VERSIONS="7.2 7.4 8.0 8.1"
+VERSIONS="7.2 7.4 8.0 8.1 8.2"
 
 for V in $VERSIONS; do
     # normal version
     docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V -f Dockerfile -t $BASE_IMAGENAME:$V .
     docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V -f Dockerfile-debug -t $BASE_IMAGENAME:$V-debug .
 
-    if [[ $V =~ (7\.2|7\.4) ]]; then
-        # ioncube
-        docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V -f Dockerfile-ioncube_loader -t $BASE_IMAGENAME:$V-ioncube_loader .
-    fi
+    #if [[ $V =~ (7\.2|7\.4) ]]; then
+    #    # ioncube
+    #    docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V -f Dockerfile-ioncube_loader -t $BASE_IMAGENAME:$V-ioncube_loader .
+    #fi
 
     if [[ $V =~ (7\.2|7\.4|8\.0|8\.1) ]]; then
         # sourceguardian
