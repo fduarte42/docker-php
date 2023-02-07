@@ -31,8 +31,7 @@ apt install -y \
   libapache2-mod-php${PHP_VERSION} \
   locales \
   imagemagick \
-  nodejs \
-  npm \
+  javascript-common \
   php${PHP_VERSION} \
   php${PHP_VERSION}-bcmath \
   php${PHP_VERSION}-bz2 \
@@ -121,6 +120,9 @@ else
     php${PHP_VERSION}-apcu
 fi
 
+# apache disable unneeded config
+a2disconf javascript-common
+
 # Hide errors
 echo "display_errors=off" > /etc/php/${PHP_VERSION}/mods-available/errors.ini
 echo "log_errors=on" >> /etc/php/${PHP_VERSION}/mods-available/errors.ini
@@ -131,9 +133,6 @@ echo "<Directory /var/www/html>" > /etc/apache2/conf-available/enable-htaccess.c
 echo "    AllowOverride All" >> /etc/apache2/conf-available/enable-htaccess.conf
 echo "</Directory>" >> /etc/apache2/conf-available/enable-htaccess.conf
 a2enconf enable-htaccess
-
-# apache disable unneeded config
-a2disconf javascript-common
 
 # apache enable modules
 a2enmod rewrite
@@ -147,6 +146,9 @@ LOCALES="en_US en_GB fr_FR es_ES pt_PT de_DE"
 for L in $LOCALES; do
     localedef -i $L -c -f UTF-8 -A /etc/locale.alias $L.UTF-8
 done
+
+# npm
+curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
 
 # setup npm
 mkdir /root/.npm
@@ -183,6 +185,12 @@ else
   php /tmp/composer-setup.php --no-ansi --install-dir=/usr/local/bin --filename=composer && rm -rf /tmp/composer-setup.php
 fi
 mkdir /var/www/.composer && chown www-data:www-data /var/www/.composer
+
+# Install psalm
+composer global require vimeo/psalm
+
+# Install phpcs
+composer global require "squizlabs/php_codesniffer=*"
 
 # Install composer-require-checker
 composer global require maglnet/composer-require-checker
