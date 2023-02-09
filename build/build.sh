@@ -149,6 +149,7 @@ done
 
 # npm
 curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+apt-get install -y nodejs
 
 # setup npm
 mkdir /root/.npm
@@ -172,6 +173,11 @@ echo "always_populate_raw_post_data = -1" > /etc/php/${PHP_VERSION}/mods-availab
 echo "max_execution_time = 240" >> /etc/php/${PHP_VERSION}/mods-available/max_input.ini
 echo "max_input_vars = 1500" >> /etc/php/${PHP_VERSION}/mods-available/max_input.ini
 phpenmod max_input
+
+# Settup git safe directory
+echo -e "[safe]\n\tdirectory = *" > /var/www/.gitconfig
+chown www-data:www-data /var/www/.gitconfig
+chmod 660 /var/www/.gitconfig
 
 # Setup the Composer installer
 curl -o /tmp/composer-setup.php https://getcomposer.org/installer
