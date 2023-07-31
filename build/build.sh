@@ -25,6 +25,7 @@ apt install -y \
   chromium \
   cron \
   curl \
+  ffmpeg \
   git \
   gnupg \
   keychain \
