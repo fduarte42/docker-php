@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
 if [ -d "/ssh" ]; then
-  cp /ssh/* /root/.ssh
+  cp /ssh/id_* /root/.ssh
   chown root:root /root/.ssh/*
   chown 600 /root/.ssh/id_*
   chmod 644 /root/.ssh/id_*.pub
 
-  cp /ssh/* /var/www/.ssh
+  cp /ssh/id_* /var/www/.ssh
   chown www-data:www-data /root/.ssh/*
   chown 600 /var/www/.ssh/id_*
   chmod 644 /var/www/.ssh/id_*.pub
