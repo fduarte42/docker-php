@@ -49,6 +49,7 @@ apt install -y \
   php${PHP_VERSION}-mysql \
   php${PHP_VERSION}-opcache \
   php${PHP_VERSION}-pgsql \
+  php${PHP_VERSION}-redis \
   php${PHP_VERSION}-soap \
   php${PHP_VERSION}-sqlite3 \
   php${PHP_VERSION}-ssh2 \
