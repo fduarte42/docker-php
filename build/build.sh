@@ -9,11 +9,12 @@ apt update
 
 apt -y install apt-transport-https lsb-release ca-certificates curl wget
 wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg
-sh -c 'echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php.list'
-
-sed -i "s|deb http://deb.debian.org/debian bullseye main|deb http://deb.debian.org/debian bullseye main contrib|" /etc/apt/sources.list
-sed -i "s|deb deb http://security.debian.org/debian-security bullseye-security main|deb http://security.debian.org/debian-security bullseye-security main contrib|" /etc/apt/sources.list
-sed -i "s|deb http://deb.debian.org/debian bullseye-updates main|deb http://deb.debian.org/debian bullseye-updates main contrib|" /etc/apt/sources.list
+echo "Types: deb
+URIs: https://packages.sury.org/php
+Suites: bookworm
+Components: main
+" > /etc/apt/sources.list.d/php.sources
+sed -i 's/main/main contrib/g' /etc/apt/sources.list.d/debian.sources
 
 apt update
 apt upgrade -y
@@ -37,8 +38,8 @@ apt install -y \
   php${PHP_VERSION}-bz2 \
   php${PHP_VERSION}-common \
   php${PHP_VERSION}-curl \
-  php${PHP_VERSION}-decimal \
   php${PHP_VERSION}-gd \
+  php${PHP_VERSION}-http \
   php${PHP_VERSION}-imagick \
   php${PHP_VERSION}-imap \
   php${PHP_VERSION}-intl \
@@ -48,6 +49,9 @@ apt install -y \
   php${PHP_VERSION}-mysql \
   php${PHP_VERSION}-opcache \
   php${PHP_VERSION}-pgsql \
+  php${PHP_VERSION}-propro \
+  php${PHP_VERSION}-raphf \
+  php${PHP_VERSION}-redis \
   php${PHP_VERSION}-soap \
   php${PHP_VERSION}-sqlite3 \
   php${PHP_VERSION}-ssh2 \
@@ -76,40 +80,6 @@ ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /etc/php/${PHP_VERSI
 ln -s /usr/bin/php /usr/local/bin/php
 ln -s /usr/bin/wkhtmltopdf /usr/local/bin/wkhtmltopdf
 
-# php http
-if [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
-  apt install -y \
-    php${PHP_VERSION}-http \
-    php${PHP_VERSION}-raphf \
-    php${PHP_VERSION}-propro
-elif [[ $PHP_VERSION =~ (8\.0|8\.1) ]]; then
-  apt install -y \
-    php${PHP_VERSION}-http \
-    php${PHP_VERSION}-raphf
-elif [[ $PHP_VERSION =~ (8\.2) ]]; then
-  apt install -y \
-    php${PHP_VERSION}-dev \
-    zlib1g-dev \
-    libcurl4-gnutls-dev \
-    libicu-dev \
-    libgnutls28-dev
-
-  yes '' | pecl install raphf
-  echo "extension=raphf.so" > /etc/php/${PHP_VERSION}/mods-available/raphf.ini
-  phpenmod -v ${PHP_VERSION} raphf
-
-  yes '' | pecl install pecl_http
-  echo "extension=http.so" > /etc/php/${PHP_VERSION}/mods-available/http.ini
-  phpenmod -v ${PHP_VERSION} http
-
-  apt remove -y \
-      php${PHP_VERSION}-dev \
-      zlib1g-dev \
-      libcurl4-gnutls-dev \
-      libicu-dev \
-      libgnutls28-dev
-fi
-
 # apcu
 if [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
   apt install -y \
@@ -119,6 +89,21 @@ else
   apt install -y \
     php${PHP_VERSION}-apcu
 fi
+
+# pecl extensions
+apt install -y \
+    php${PHP_VERSION}-dev \
+    libmpdec-dev
+
+# decimal
+yes '' | pecl install decimal
+echo "extension=decimal.so" > /etc/php/${PHP_VERSION}/mods-available/decimal.ini
+phpenmod -v ${PHP_VERSION} decimal
+
+# pecl extensions cleanup
+apt remove -y \
+    php${PHP_VERSION}-dev \
+    libmpdec-dev
 
 # apache disable unneeded config
 a2disconf javascript-common
@@ -174,7 +159,7 @@ echo "max_execution_time = 240" >> /etc/php/${PHP_VERSION}/mods-available/max_in
 echo "max_input_vars = 1500" >> /etc/php/${PHP_VERSION}/mods-available/max_input.ini
 phpenmod max_input
 
-# Settup git safe directory
+# Setup git safe directory
 echo -e "[safe]\n\tdirectory = *" > /var/www/.gitconfig
 chown www-data:www-data /var/www/.gitconfig
 chmod 660 /var/www/.gitconfig
@@ -185,7 +170,7 @@ curl -o /tmp/composer-setup.sig https://composer.github.io/installer.sig
 php -r "if (hash('SHA384', file_get_contents('/tmp/composer-setup.php')) !== trim(file_get_contents('/tmp/composer-setup.sig'))) { unlink('/tmp/composer-setup.php'); echo 'Invalid installer' . PHP_EOL; exit(1); }"
 
 # Install Composer
-if [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
+if [[ $PHP_VERSION =~ (7\.2) ]]; then
   php /tmp/composer-setup.php --1 --no-ansi --install-dir=/usr/local/bin --filename=composer && rm -rf /tmp/composer-setup.php
 else
   php /tmp/composer-setup.php --no-ansi --install-dir=/usr/local/bin --filename=composer && rm -rf /tmp/composer-setup.php
@@ -203,14 +188,14 @@ composer global require maglnet/composer-require-checker
 
 # replace wkthtmltopdf with patched qt version
 if [ "$TARGETARCH" = "arm64" ]; then
-  dpkg -i /tmp/wkhtmltox_0.12.6-1.buster_arm64.deb
+  dpkg -i /tmp/wkhtmltox_0.12.6.1-3.bookworm_arm64.deb
 fi
 
 if [ "$TARGETARCH" = "amd64" ]; then
-  dpkg -i /tmp/wkhtmltox_0.12.6-1.buster_amd64.deb
+  dpkg -i /tmp/wkhtmltox_0.12.6.1-3.bookworm_amd64.deb
 fi
 
-rm /tmp/wkhtmltox_0.12.6-1.buster_*.deb
+rm /tmp/wkhtmltox_0.12.6.1-3.bookworm_*.deb
 
 # setup keychain
 mkdir /root/.ssh
