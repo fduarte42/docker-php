@@ -33,6 +33,7 @@ apt install -y \
   locales \
   imagemagick \
   javascript-common \
+  openssh-server \
   php${PHP_VERSION} \
   php${PHP_VERSION}-bcmath \
   php${PHP_VERSION}-bz2 \
