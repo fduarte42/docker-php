@@ -23,11 +23,7 @@ echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.co
 apt update
 apt upgrade -y
 
-echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula \
-    select true | debconf-set-selections
-
 apt install -y \
-  chromium \
   cron \
   curl \
   ffmpeg \
@@ -64,15 +60,10 @@ apt install -y \
   php${PHP_VERSION}-xml \
   php${PHP_VERSION}-xsl \
   php${PHP_VERSION}-zip \
-  pngquant \
-  poppler-utils \
   rsyslog \
   sudo \
   supervisor \
-  ttf-mscorefonts-installer \
   unzip \
-  wkhtmltopdf \
-  xfonts-75dpi \
   yarn
 
 update-alternatives --set php /usr/bin/php${PHP_VERSION}
@@ -84,7 +75,6 @@ ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /usr/local/etc/php/c
 ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /etc/php/${PHP_VERSION}/apache2/conf.d
 ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /etc/php/${PHP_VERSION}/cli/conf.d
 ln -s /usr/bin/php /usr/local/bin/php
-ln -s /usr/bin/wkhtmltopdf /usr/local/bin/wkhtmltopdf
 
 # php http
 if [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
@@ -180,7 +170,7 @@ echo "max_execution_time = 240" >> /etc/php/${PHP_VERSION}/mods-available/max_in
 echo "max_input_vars = 1500" >> /etc/php/${PHP_VERSION}/mods-available/max_input.ini
 phpenmod max_input
 
-# Settup git safe directory
+# Setup git safe directory
 echo -e "[safe]\n\tdirectory = *" > /var/www/.gitconfig
 chown www-data:www-data /var/www/.gitconfig
 chmod 660 /var/www/.gitconfig
@@ -206,17 +196,6 @@ composer global require "squizlabs/php_codesniffer=*"
 
 # Install composer-require-checker
 composer global require maglnet/composer-require-checker
-
-# replace wkthtmltopdf with patched qt version
-if [ "$TARGETARCH" = "arm64" ]; then
-  dpkg -i /tmp/wkhtmltox_0.12.6-1.buster_arm64.deb
-fi
-
-if [ "$TARGETARCH" = "amd64" ]; then
-  dpkg -i /tmp/wkhtmltox_0.12.6-1.buster_amd64.deb
-fi
-
-rm /tmp/wkhtmltox_0.12.6-1.buster_*.deb
 
 # setup keychain
 mkdir /root/.ssh
