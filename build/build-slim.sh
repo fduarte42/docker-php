@@ -44,6 +44,7 @@ apt install -y \
   php${PHP_VERSION}-curl \
   php${PHP_VERSION}-decimal \
   php${PHP_VERSION}-gd \
+  php${PHP_VERSION}-http \
   php${PHP_VERSION}-imagick \
   php${PHP_VERSION}-imap \
   php${PHP_VERSION}-intl \
@@ -53,6 +54,7 @@ apt install -y \
   php${PHP_VERSION}-mysql \
   php${PHP_VERSION}-opcache \
   php${PHP_VERSION}-pgsql \
+  php${PHP_VERSION}-raphf \
   php${PHP_VERSION}-redis \
   php${PHP_VERSION}-soap \
   php${PHP_VERSION}-sqlite3 \
@@ -66,6 +68,17 @@ apt install -y \
   unzip \
   yarn
 
+if [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
+  apt install -y \
+    php${PHP_VERSION}-http \
+    php${PHP_VERSION}-raphf \
+    php${PHP_VERSION}-propro
+else
+  apt install -y \
+    php${PHP_VERSION}-http \
+    php${PHP_VERSION}-raphf
+fi
+
 update-alternatives --set php /usr/bin/php${PHP_VERSION}
 
 # docker-template compatibility
@@ -75,40 +88,6 @@ ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /usr/local/etc/php/c
 ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /etc/php/${PHP_VERSION}/apache2/conf.d
 ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /etc/php/${PHP_VERSION}/cli/conf.d
 ln -s /usr/bin/php /usr/local/bin/php
-
-# php http
-if [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
-  apt install -y \
-    php${PHP_VERSION}-http \
-    php${PHP_VERSION}-raphf \
-    php${PHP_VERSION}-propro
-elif [[ $PHP_VERSION =~ (8\.0|8\.1) ]]; then
-  apt install -y \
-    php${PHP_VERSION}-http \
-    php${PHP_VERSION}-raphf
-elif [[ $PHP_VERSION =~ (8\.2) ]]; then
-  apt install -y \
-    php${PHP_VERSION}-dev \
-    zlib1g-dev \
-    libcurl4-gnutls-dev \
-    libicu-dev \
-    libgnutls28-dev
-
-  yes '' | pecl install raphf
-  echo "extension=raphf.so" > /etc/php/${PHP_VERSION}/mods-available/raphf.ini
-  phpenmod -v ${PHP_VERSION} raphf
-
-  yes '' | pecl install pecl_http
-  echo "extension=http.so" > /etc/php/${PHP_VERSION}/mods-available/http.ini
-  phpenmod -v ${PHP_VERSION} http
-
-  apt remove -y \
-      php${PHP_VERSION}-dev \
-      zlib1g-dev \
-      libcurl4-gnutls-dev \
-      libicu-dev \
-      libgnutls28-dev
-fi
 
 # apcu
 if [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then

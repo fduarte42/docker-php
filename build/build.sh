@@ -75,6 +75,17 @@ apt install -y \
   xfonts-75dpi \
   yarn
 
+if [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
+  apt install -y \
+    php${PHP_VERSION}-http \
+    php${PHP_VERSION}-raphf \
+    php${PHP_VERSION}-propro
+else
+  apt install -y \
+    php${PHP_VERSION}-http \
+    php${PHP_VERSION}-raphf
+fi
+
 update-alternatives --set php /usr/bin/php${PHP_VERSION}
 
 # docker-template compatibility
@@ -85,40 +96,6 @@ ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /etc/php/${PHP_VERSI
 ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /etc/php/${PHP_VERSION}/cli/conf.d
 ln -s /usr/bin/php /usr/local/bin/php
 ln -s /usr/bin/wkhtmltopdf /usr/local/bin/wkhtmltopdf
-
-# php http
-if [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
-  apt install -y \
-    php${PHP_VERSION}-http \
-    php${PHP_VERSION}-raphf \
-    php${PHP_VERSION}-propro
-elif [[ $PHP_VERSION =~ (8\.0|8\.1) ]]; then
-  apt install -y \
-    php${PHP_VERSION}-http \
-    php${PHP_VERSION}-raphf
-elif [[ $PHP_VERSION =~ (8\.2) ]]; then
-  apt install -y \
-    php${PHP_VERSION}-dev \
-    zlib1g-dev \
-    libcurl4-gnutls-dev \
-    libicu-dev \
-    libgnutls28-dev
-
-  yes '' | pecl install raphf
-  echo "extension=raphf.so" > /etc/php/${PHP_VERSION}/mods-available/raphf.ini
-  phpenmod -v ${PHP_VERSION} raphf
-
-  yes '' | pecl install pecl_http
-  echo "extension=http.so" > /etc/php/${PHP_VERSION}/mods-available/http.ini
-  phpenmod -v ${PHP_VERSION} http
-
-  apt remove -y \
-      php${PHP_VERSION}-dev \
-      zlib1g-dev \
-      libcurl4-gnutls-dev \
-      libicu-dev \
-      libgnutls28-dev
-fi
 
 # apcu
 if [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
