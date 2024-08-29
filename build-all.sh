@@ -36,13 +36,13 @@ for V in $VERSIONS; do
     #    docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V --build-arg FLAVOR="-oci" -f Dockerfile-ioncube_loader -t $BASE_IMAGENAME:$V-oci-ioncube_loader .
     #fi
 
-    #if [[ $V =~ (7\.4|8\.0|8\.1|8\.2) ]]; then
-    #    # sourceguardian
-    #    docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V -f Dockerfile-sourceguardian -t $BASE_IMAGENAME:$V-sourceguardian .
-    #
-    #    # sourceguardian with oracle
-    #    docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V --build-arg FLAVOR="-oci" -f Dockerfile-sourceguardian -t $BASE_IMAGENAME:$V-oci-sourceguardian .
-    #fi
+    if [[ $V =~ (8\.2|8\.3) ]]; then
+        # sourceguardian
+        docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V -f Dockerfile-sourceguardian -t $BASE_IMAGENAME:$V-sourceguardian .
+
+        # sourceguardian with oracle
+        docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V --build-arg FLAVOR="-oci" -f Dockerfile-sourceguardian -t $BASE_IMAGENAME:$V-oci-sourceguardian .
+    fi
 
     if [[ $V =~ (7\.4|8\.2|8\.3) ]]; then
         # chartdirector
