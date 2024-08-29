@@ -7,12 +7,12 @@ PLATFORMS=linux/amd64,linux/arm64
 
 cd build
 #VERSIONS="7.4 8.0 8.1 8.2 8.3"
-VERSIONS="7.2 7.4 8.0 8.1 8.2 8.3"
+VERSIONS="7.4 8.2 8.3"
 
 for V in $VERSIONS; do
     if [[ $V =~ (8\.2|8\.3) ]]; then
       # slim version
-      docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V -f Dockerfile-slim -t $BASE_IMAGENAME:$V-slim .
+      docker buildx build --platform $PLATFORMS --squash --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V -f Dockerfile-slim -t $BASE_IMAGENAME:$V-slim .
       docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V --build-arg FLAVOR="-slim" -f Dockerfile-debug -t $BASE_IMAGENAME:$V-slim-debug .
 
       # slim oracle version
@@ -21,7 +21,7 @@ for V in $VERSIONS; do
     fi
 
     # normal version
-    docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V -f Dockerfile -t $BASE_IMAGENAME:$V .
+    docker buildx build --platform $PLATFORMS --squash --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V -f Dockerfile -t $BASE_IMAGENAME:$V .
     docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V -f Dockerfile-debug -t $BASE_IMAGENAME:$V-debug .
 
     # oracle
