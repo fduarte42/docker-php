@@ -115,6 +115,15 @@ echo "display_errors=off" > /etc/php/${PHP_VERSION}/mods-available/errors.ini
 echo "log_errors=on" >> /etc/php/${PHP_VERSION}/mods-available/errors.ini
 phpenmod errors
 
+# session live time
+mkdir /var/tmp/php-sessions
+chmod 1733 /var/tmp/php-sessions
+echo "session.gc_probability=1" > /etc/php/${PHP_VERSION}/mods-available/session_gc.ini
+echo "session.gc_maxlifetime=\${PHP_GC_MAX_LIFETIME}" >> /etc/php/${PHP_VERSION}/mods-available/session_gc.ini
+echo "session.gc_divisor=1000" >> /etc/php/${PHP_VERSION}/mods-available/session_gc.ini
+echo "session.save_path=/var/tmp/php-sessions" >> /etc/php/${PHP_VERSION}/mods-available/session_gc.ini
+phpenmod session_gc
+
 # apache enable .htaccess
 echo "<Directory /var/www/html>" > /etc/apache2/conf-available/enable-htaccess.conf
 echo "    AllowOverride All" >> /etc/apache2/conf-available/enable-htaccess.conf

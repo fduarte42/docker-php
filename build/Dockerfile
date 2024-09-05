@@ -15,6 +15,9 @@ ENV PATH /composer/vendor/bin:$PATH
 # Allow Composer to be run as root
 ENV COMPOSER_ALLOW_SUPERUSER 1
 
+# Set PHP session max lifetime
+ENV PHP_GC_MAX_LIFETIME 1440
+
 # pre-build
 COPY config/keyboard /etc/default/keyboard
 COPY scripts/.bashrc /root/.bashrc
