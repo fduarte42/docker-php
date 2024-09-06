@@ -109,7 +109,8 @@ phpenmod errors
 
 # session live time
 mkdir /var/tmp/php-sessions
-chmod 1733 /var/tmp/php-sessions
+chown www-data:www-data /var/tmp/php-sessions
+chmod 1770 /var/tmp/php-sessions
 echo "session.gc_probability=1" > /etc/php/${PHP_VERSION}/mods-available/session_gc.ini
 echo "session.gc_maxlifetime=\${PHP_GC_MAX_LIFETIME}" >> /etc/php/${PHP_VERSION}/mods-available/session_gc.ini
 echo "session.gc_divisor=1000" >> /etc/php/${PHP_VERSION}/mods-available/session_gc.ini
