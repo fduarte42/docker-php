@@ -32,6 +32,7 @@ apt install -y \
   keychain \
   libapache2-mod-php${PHP_VERSION} \
   locales \
+  htop \
   imagemagick \
   javascript-common \
   nano-tiny \

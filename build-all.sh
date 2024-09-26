@@ -44,7 +44,7 @@ for V in $VERSIONS; do
         docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V --build-arg FLAVOR="-oci" -f Dockerfile-sourceguardian -t $BASE_IMAGENAME:$V-oci-sourceguardian .
     fi
 
-    if [[ $V =~ (7\.4|8\.2|8\.3) ]]; then
+    if [[ $V =~ (7\.4) ]]; then
         # chartdirector
         docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V -f Dockerfile-chartdirector -t $BASE_IMAGENAME:$V-chartdirector .
         docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION=$V --build-arg FLAVOR="-debug" -f Dockerfile-chartdirector -t $BASE_IMAGENAME:$V-chartdirector-debug .
