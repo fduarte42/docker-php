@@ -3,20 +3,20 @@ ARG TARGETARCH
 ARG PHP_VERSION
 
 # add puppeteer config
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD true
-ENV PUPPETEER_EXECUTABLE_PATH /usr/bin/chromium
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 # Register the COMPOSER_HOME environment variable
-ENV COMPOSER_HOME /composer
+ENV COMPOSER_HOME=/composer
 
 # Add global binary directory to PATH and make sure to re-export it
-ENV PATH /composer/vendor/bin:$PATH
+ENV PATH=/composer/vendor/bin:$PATH
 
 # Allow Composer to be run as root
-ENV COMPOSER_ALLOW_SUPERUSER 1
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
 # Set PHP session max lifetime
-ENV PHP_GC_MAX_LIFETIME 1440
+ENV PHP_GC_MAX_LIFETIME=1440
 
 # pre-build
 COPY config/keyboard /etc/default/keyboard
