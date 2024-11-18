@@ -11,9 +11,7 @@ apt -y install apt-transport-https lsb-release ca-certificates curl wget gnupg
 wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg
 sh -c 'echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php.list'
 
-sed -i "s|deb http://deb.debian.org/debian bullseye main|deb http://deb.debian.org/debian bullseye main contrib|" /etc/apt/sources.list
-sed -i "s|deb deb http://security.debian.org/debian-security bullseye-security main|deb http://security.debian.org/debian-security bullseye-security main contrib|" /etc/apt/sources.list
-sed -i "s|deb http://deb.debian.org/debian bullseye-updates main|deb http://deb.debian.org/debian bullseye-updates main contrib|" /etc/apt/sources.list
+sed -i 's/^Components: main$/& contrib/' /etc/apt/sources.list.d/debian.sources
 
 # node
 mkdir -p /etc/apt/keyrings
@@ -111,7 +109,7 @@ echo "log_errors=on" >> /etc/php/${PHP_VERSION}/mods-available/errors.ini
 phpenmod errors
 
 # session live time
-mkdir /var/tmp/php-sessions
+mkdir -p /var/tmp/php-sessions
 chown www-data:www-data /var/tmp/php-sessions
 chmod 1770 /var/tmp/php-sessions
 echo "session.gc_probability=1" > /etc/php/${PHP_VERSION}/mods-available/session_gc.ini
@@ -140,8 +138,8 @@ for L in $LOCALES; do
 done
 
 # setup npm
-mkdir /root/.npm
-mkdir /var/www/.npm
+mkdir -p /root/.npm
+mkdir -p /var/www/.npm
 chown www-data:www-data /var/www/.npm
 
 # install wait-for-it
@@ -178,7 +176,7 @@ if [[ $PHP_VERSION =~ (7\.2) ]]; then
 else
   php /tmp/composer-setup.php --no-ansi --install-dir=/usr/local/bin --filename=composer && rm -rf /tmp/composer-setup.php
 fi
-mkdir /var/www/.composer && chown www-data:www-data /var/www/.composer
+mkdir -p /var/www/.composer && chown www-data:www-data /var/www/.composer
 
 # Install psalm
 composer global require vimeo/psalm
@@ -190,13 +188,13 @@ composer global require "squizlabs/php_codesniffer=*"
 composer global require maglnet/composer-require-checker
 
 # setup keychain
-mkdir /root/.ssh
+mkdir -p /root/.ssh
 chmod 744 /root/.ssh
 
-mkdir /var/www/.ssh
+mkdir -p /var/www/.ssh
 chown -R www-data:www-data /var/www/.ssh
 chmod 744 /var/www/.ssh
-mkdir /var/www/.keychain
+mkdir -p /var/www/.keychain
 chown -R www-data:www-data /var/www/.keychain
 touch /var/www/.selected_editor
 chown www-data:www-data /var/www/.selected_editor
@@ -205,12 +203,12 @@ cp /root/.profile /var/www/.profile
 chown -R www-data:www-data /var/www/.profile
 
 # gnupg
-mkdir /var/www/.gnupg
+mkdir -p /var/www/.gnupg
 chown -R www-data:www-data /var/www/.gnupg
 chmod 700 /var/www/.gnupg
 
 # config
-mkdir /var/www/.config
+mkdir -p /var/www/.config
 chown -R www-data:www-data /var/www/.config
 chmod 744 /var/www/.config
 
