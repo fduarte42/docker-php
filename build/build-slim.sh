@@ -35,6 +35,7 @@ apt install -y \
   htop \
   imagemagick \
   javascript-common \
+  msmtp \
   nano-tiny \
   nodejs \
   openssh-server \
@@ -63,6 +64,7 @@ apt install -y \
   php${PHP_VERSION}-xml \
   php${PHP_VERSION}-xsl \
   php${PHP_VERSION}-zip \
+  poppler-utils \
   rsyslog \
   sudo \
   supervisor \
