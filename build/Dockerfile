@@ -1,4 +1,4 @@
-FROM debian:bookwork-slim
+FROM debian:bookworm-slim
 ARG TARGETARCH
 ARG PHP_VERSION
 
