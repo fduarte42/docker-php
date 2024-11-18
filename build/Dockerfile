@@ -24,7 +24,7 @@ COPY scripts/.bashrc /root/.bashrc
 COPY scripts/.bashrc /var/www/.bashrc
 RUN chown -R www-data:www-data /var/www/.bashrc
 
-COPY packages/wkhtmltox_0.12.6-1.buster_*.deb /tmp/
+COPY packages/wkhtmltox_*.deb /tmp/
 
 # build
 COPY build.sh /build.sh

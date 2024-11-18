@@ -196,14 +196,14 @@ composer global require maglnet/composer-require-checker
 
 # replace wkthtmltopdf with patched qt version
 if [ "$TARGETARCH" = "arm64" ]; then
-  dpkg -i /tmp/wkhtmltox_0.12.6-1.buster_arm64.deb
+  dpkg -i /tmp/wkhtmltox_*_arm64.deb
 fi
 
 if [ "$TARGETARCH" = "amd64" ]; then
-  dpkg -i /tmp/wkhtmltox_0.12.6-1.buster_amd64.deb
+  dpkg -i /tmp/wkhtmltox_*_amd64.deb
 fi
 
-rm /tmp/wkhtmltox_0.12.6-1.buster_*.deb
+rm /tmp/wkhtmltox_*.deb
 
 # setup keychain
 mkdir -p /root/.ssh
