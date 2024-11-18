@@ -39,6 +39,7 @@ apt install -y \
   htop \
   imagemagick \
   javascript-common \
+  msmtp \
   nano-tiny \
   nodejs \
   openssh-server \
