@@ -22,6 +22,7 @@ apt update
 apt upgrade -y
 
 apt install -y \
+  bzip2 \
   cron \
   curl \
   ffmpeg \
