@@ -131,6 +131,11 @@ echo "    Options -Indexes" >> /etc/apache2/conf-available/disable-dir-list.conf
 echo "</Directory>" >> /etc/apache2/conf-available/disable-dir-list.conf
 a2enconf disable-dir-list
 
+# apache hide server signature
+echo "ServerTokens Prod" > /etc/apache2/conf-available/hide-server-signature.conf
+echo "ServerSignature Off" >> /etc/apache2/conf-available/hide-server-signature.conf
+a2enconf hide-server-signature
+
 # apache enable modules
 a2enmod rewrite
 a2enmod headers
