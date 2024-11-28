@@ -125,6 +125,12 @@ echo "    AllowOverride All" >> /etc/apache2/conf-available/enable-htaccess.conf
 echo "</Directory>" >> /etc/apache2/conf-available/enable-htaccess.conf
 a2enconf enable-htaccess
 
+# apache disable directory listing
+echo "<Directory /var/www/html>" > /etc/apache2/conf-available/disable-dir-list.conf
+echo "    Options -Indexes" >> /etc/apache2/conf-available/disable-dir-list.conf
+echo "</Directory>" >> /etc/apache2/conf-available/disable-dir-list.conf
+a2enconf disable-dir-list
+
 # apache enable modules
 a2enmod rewrite
 a2enmod headers
