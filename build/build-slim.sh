@@ -197,7 +197,11 @@ composer global require vimeo/psalm
 composer global require "squizlabs/php_codesniffer=*"
 
 # Install composer-require-checker
-composer global require maglnet/composer-require-checker
+if [[ $PHP_VERSION =~ (7\.4) ]]; then
+    composer global require maglnet/composer-require-checker:3.8.0
+else
+    composer global require maglnet/composer-require-checker
+fi
 
 # setup keychain
 mkdir -p /root/.ssh
