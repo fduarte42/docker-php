@@ -1,5 +1,5 @@
 FROM debian:bookworm-slim
-ARG TARGETARCH=amd64
+ARG TARGETARCH
 ARG PHP_VERSION=7.4
 
 # add puppeteer config
