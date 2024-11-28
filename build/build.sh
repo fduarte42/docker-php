@@ -190,11 +190,7 @@ curl -o /tmp/composer-setup.sig https://composer.github.io/installer.sig
 php -r "if (hash('SHA384', file_get_contents('/tmp/composer-setup.php')) !== trim(file_get_contents('/tmp/composer-setup.sig'))) { unlink('/tmp/composer-setup.php'); echo 'Invalid installer' . PHP_EOL; exit(1); }"
 
 # Install Composer
-if [[ $PHP_VERSION =~ (7\.2) ]]; then
-  php /tmp/composer-setup.php --1 --no-ansi --install-dir=/usr/local/bin --filename=composer && rm -rf /tmp/composer-setup.php
-else
-  php /tmp/composer-setup.php --no-ansi --install-dir=/usr/local/bin --filename=composer && rm -rf /tmp/composer-setup.php
-fi
+php /tmp/composer-setup.php --no-ansi --install-dir=/usr/local/bin --filename=composer && rm -rf /tmp/composer-setup.php
 mkdir -p /var/www/.composer && chown www-data:www-data /var/www/.composer
 
 # Install psalm
@@ -204,7 +200,11 @@ composer global require vimeo/psalm
 composer global require "squizlabs/php_codesniffer=*"
 
 # Install composer-require-checker
-composer global require maglnet/composer-require-checker
+if [[ $PHP_VERSION =~ (7\.4) ]]; then
+    composer global require maglnet/composer-require-checker:3.8.0
+else
+    composer global require maglnet/composer-require-checker
+fi
 
 # replace wkthtmltopdf with patched qt version
 if [ "$TARGETARCH" = "arm64" ]; then
