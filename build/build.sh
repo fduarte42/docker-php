@@ -5,9 +5,9 @@ export DEBIAN_FRONTEND=noninteractive
 export TERM=linux
 
 # init packages
-apt update
+apt-get update
 
-apt -y install apt-transport-https lsb-release ca-certificates curl wget gnupg
+apt-get -y install apt-transport-https lsb-release ca-certificates curl wget gnupg
 wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg
 sh -c 'echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php.list'
 
@@ -18,13 +18,13 @@ mkdir -p /etc/apt/keyrings
 curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
 echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
 
-apt update
-apt upgrade -y
+apt-get update
+apt-get upgrade -y
 
 echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula \
     select true | debconf-set-selections
 
-apt install -y \
+apt-get install -y \
   bzip2 \
   chromium \
   cron \
@@ -77,12 +77,12 @@ apt install -y \
   yarn
 
 if [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
-  apt install -y \
+  apt-get install -y \
     php${PHP_VERSION}-http \
     php${PHP_VERSION}-raphf \
     php${PHP_VERSION}-propro
 else
-  apt install -y \
+  apt-get install -y \
     php${PHP_VERSION}-http \
     php${PHP_VERSION}-raphf
 fi
@@ -100,11 +100,11 @@ ln -s /usr/bin/wkhtmltopdf /usr/local/bin/wkhtmltopdf
 
 # apcu
 if [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
-  apt install -y \
+  apt-get install -y \
     php${PHP_VERSION}-apcu \
     php${PHP_VERSION}-apcu-bc
 else
-  apt install -y \
+  apt-get install -y \
     php${PHP_VERSION}-apcu
 fi
 
@@ -166,7 +166,7 @@ curl -sL https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for
 chmod +x /usr/sbin/wait-for-it.sh
 
 # ssmtp
-apt install -y ssmtp
+apt-get install -y ssmtp
 
 # Set the time zone to the local time zone
 echo "Europe/Berlin" > /etc/timezone && dpkg-reconfigure --frontend noninteractive tzdata
