@@ -70,7 +70,7 @@ apt-get install -y \
   unzip \
   yarn
 
-if [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
+if [[ $PHP_VERSION =~ (7\.4) ]]; then
   apt-get install -y \
     php${PHP_VERSION}-http \
     php${PHP_VERSION}-raphf \
@@ -92,7 +92,7 @@ ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /etc/php/${PHP_VERSI
 ln -s /usr/bin/php /usr/local/bin/php
 
 # apcu
-if [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
+if [[ $PHP_VERSION =~ (7\.4) ]]; then
   apt-get install -y \
     php${PHP_VERSION}-apcu \
     php${PHP_VERSION}-apcu-bc
