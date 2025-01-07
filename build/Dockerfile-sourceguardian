@@ -5,6 +5,8 @@ FROM ${BASE_IMAGENAME}:${PHP_VERSION}${FLAVOR}
 ARG TARGETARCH
 ARG PHP_VERSION=8.2
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 # add chartdirector extension
 COPY extension/loaders.linux-*.tar.bz2 /tmp/
 

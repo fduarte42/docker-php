@@ -5,6 +5,8 @@ FROM ${BASE_IMAGENAME}:${PHP_VERSION}${FLAVOR}
 ARG TARGETARCH
 ARG PHP_VERSION=7.4
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 # add oci packages
 RUN mkdir -p /opt/oracle
 COPY driver/oracle/* /tmp/

@@ -5,6 +5,8 @@ FROM ${BASE_IMAGENAME}:${PHP_VERSION}${FLAVOR}
 ARG TARGETARCH
 ARG PHP_VERSION=7.4
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 # add debug packages
 COPY add-debug.sh /add-debug.sh
 RUN bash /add-debug.sh && rm /add-debug.sh

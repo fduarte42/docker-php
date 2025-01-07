@@ -2,6 +2,8 @@ FROM debian:bookworm-slim
 ARG TARGETARCH
 ARG PHP_VERSION=7.4
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 # add puppeteer config
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium

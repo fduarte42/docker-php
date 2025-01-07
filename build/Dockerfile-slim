@@ -2,6 +2,8 @@ FROM debian:bookworm-slim
 ARG TARGETARCH
 ARG PHP_VERSION=7.4
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 # Register the COMPOSER_HOME environment variable
 ENV COMPOSER_HOME=/composer
 
