@@ -110,6 +110,8 @@ echo "log_errors=on" >> /etc/php/${PHP_VERSION}/mods-available/errors.ini
 phpenmod errors
 
 # session live time
+systemctl disable phpsessionclean.service
+systemctl disable phpsessionclean.timer
 mkdir -p /var/tmp/php-sessions
 chown www-data:www-data /var/tmp/php-sessions
 chmod 1770 /var/tmp/php-sessions
@@ -176,6 +178,13 @@ phpenmod max_input
 echo -e "[safe]\n\tdirectory = *" > /var/www/.gitconfig
 chown www-data:www-data /var/www/.gitconfig
 chmod 660 /var/www/.gitconfig
+
+# allow bash history for www-data
+touch /var/www/.bash_history
+chown 600 /var/www/.bash_history
+
+# allow www-data to reload apache
+echo "www-data ALL = (root) NOPASSWD: /etc/init.d/apache2 reload" > /etc/sudoers.d/reload-apache
 
 # Setup the Composer installer
 curl -o /tmp/composer-setup.php https://getcomposer.org/installer
