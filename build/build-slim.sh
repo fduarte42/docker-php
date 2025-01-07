@@ -182,6 +182,7 @@ chmod 660 /var/www/.gitconfig
 # allow bash history for www-data
 touch /var/www/.bash_history
 chown 600 /var/www/.bash_history
+chown www-data:www-data /var/www/.bash_history
 
 # allow www-data to reload apache
 echo "www-data ALL = (root) NOPASSWD: /etc/init.d/apache2 reload" > /etc/sudoers.d/reload-apache
