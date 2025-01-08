@@ -30,7 +30,8 @@ apt-get install -y \
   git \
   gnupg \
   keychain \
-  libapache2-mod-php${PHP_VERSION} \
+  \ # libapache2-mod-php${PHP_VERSION} \
+  libapache2-mod-fcgid \
   locales \
   htop \
   imagemagick \
@@ -40,6 +41,7 @@ apt-get install -y \
   nodejs \
   openssh-server \
   php${PHP_VERSION} \
+  php${PHP_VERSION}-fpm \
   php${PHP_VERSION}-bcmath \
   php${PHP_VERSION}-bz2 \
   php${PHP_VERSION}-common \
@@ -102,6 +104,10 @@ else
     php${PHP_VERSION}-apcu
 fi
 
+# apache enable modules
+a2enmod proxy_fcgi setenvif
+a2enconf php${PHP_VERSION}-fpm
+
 # apache disable unneeded config
 a2disconf javascript-common
 
@@ -121,6 +127,12 @@ echo "session.gc_maxlifetime=\${PHP_GC_MAX_LIFETIME}" >> /etc/php/${PHP_VERSION}
 echo "session.gc_divisor=1000" >> /etc/php/${PHP_VERSION}/mods-available/session_gc.ini
 echo "session.save_path=/var/tmp/php-sessions" >> /etc/php/${PHP_VERSION}/mods-available/session_gc.ini
 phpenmod session_gc
+
+# apache enable php-fpm for all .php files
+echo "<FilesMatch \"\.php$\">" > /etc/apache2/conf-available/enable-php-handler.conf
+echo "    SetHandler \"proxy:unix:/run/php/php${PHP_VERSION}-fpm.sock|fcgi://localhost/\"" >> /etc/apache2/conf-available/enable-php-handler.conf
+echo "</FilesMatch>" >> /etc/apache2/conf-available/enable-php-handler.conf
+a2enconf enable-php-handler
 
 # apache enable .htaccess
 echo "<Directory /var/www/html>" > /etc/apache2/conf-available/enable-htaccess.conf
