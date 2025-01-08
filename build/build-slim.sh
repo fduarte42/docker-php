@@ -23,6 +23,7 @@ apt-get remove -y --purge python3 python3-minimal python3.*
 apt-get upgrade -y
 
 apt-get install -y \
+  apache2 \
   bzip2 \
   cron \
   curl \
@@ -30,7 +31,6 @@ apt-get install -y \
   git \
   gnupg \
   keychain \
-  \ # libapache2-mod-php${PHP_VERSION} \
   libapache2-mod-fcgid \
   locales \
   htop \
@@ -48,7 +48,6 @@ apt-get install -y \
   php${PHP_VERSION}-curl \
   php${PHP_VERSION}-decimal \
   php${PHP_VERSION}-gd \
-  php${PHP_VERSION}-http \
   php${PHP_VERSION}-imagick \
   php${PHP_VERSION}-imap \
   php${PHP_VERSION}-intl \
@@ -58,7 +57,6 @@ apt-get install -y \
   php${PHP_VERSION}-mysql \
   php${PHP_VERSION}-opcache \
   php${PHP_VERSION}-pgsql \
-  php${PHP_VERSION}-raphf \
   php${PHP_VERSION}-redis \
   php${PHP_VERSION}-soap \
   php${PHP_VERSION}-sqlite3 \
@@ -90,7 +88,7 @@ update-alternatives --set php /usr/bin/php${PHP_VERSION}
 mkdir -p /usr/local/etc/php/conf.d
 touch /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini
 ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /usr/local/etc/php/conf.d/zzz-custom.ini
-ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /etc/php/${PHP_VERSION}/apache2/conf.d
+ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /etc/php/${PHP_VERSION}/fpm/conf.d
 ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /etc/php/${PHP_VERSION}/cli/conf.d
 ln -s /usr/bin/php /usr/local/bin/php
 
@@ -158,6 +156,12 @@ a2enmod expires
 a2enmod proxy
 a2enmod proxy_http
 
+# disable clear env for php fpm
+sed -i "s/;clear_env = no/clear_env = no/" /etc/php/${PHP_VERSION}/fpm/pool.d/www.conf
+
+# add php fpm link for supervisor
+ln -s /usr/sbin/php-fpm${PHP_VERSION} /usr/sbin/php-fpm
+
 # locales
 LOCALES="en_US en_GB fr_FR es_ES pt_PT de_DE"
 for L in $LOCALES; do
@@ -206,11 +210,7 @@ curl -o /tmp/composer-setup.sig https://composer.github.io/installer.sig
 php -r "if (hash('SHA384', file_get_contents('/tmp/composer-setup.php')) !== trim(file_get_contents('/tmp/composer-setup.sig'))) { unlink('/tmp/composer-setup.php'); echo 'Invalid installer' . PHP_EOL; exit(1); }"
 
 # Install Composer
-if [[ $PHP_VERSION =~ (7\.2) ]]; then
-  php /tmp/composer-setup.php --1 --no-ansi --install-dir=/usr/local/bin --filename=composer && rm -rf /tmp/composer-setup.php
-else
-  php /tmp/composer-setup.php --no-ansi --install-dir=/usr/local/bin --filename=composer && rm -rf /tmp/composer-setup.php
-fi
+php /tmp/composer-setup.php --no-ansi --install-dir=/usr/local/bin --filename=composer && rm -rf /tmp/composer-setup.php
 mkdir -p /var/www/.composer && chown www-data:www-data /var/www/.composer
 
 # Install psalm
