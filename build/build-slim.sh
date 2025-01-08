@@ -201,8 +201,9 @@ touch /var/www/.bash_history
 chown 600 /var/www/.bash_history
 chown www-data:www-data /var/www/.bash_history
 
-# allow www-data to reload apache
+# allow www-data to reload apache and php-fpm
 echo "www-data ALL = (root) NOPASSWD: /etc/init.d/apache2 reload" > /etc/sudoers.d/reload-apache
+echo "www-data ALL = (root) NOPASSWD: /usr/local/bin/php-fpm-reload.sh" > /etc/sudoers.d/reload-php-fpm
 
 # Setup the Composer installer
 curl -o /tmp/composer-setup.php https://getcomposer.org/installer
