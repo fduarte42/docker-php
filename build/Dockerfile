@@ -25,6 +25,8 @@ COPY config/keyboard /etc/default/keyboard
 COPY scripts/.bashrc /root/.bashrc
 COPY scripts/.bashrc /var/www/.bashrc
 RUN chown -R www-data:www-data /var/www/.bashrc
+COPY scripts/php-fpm-reload.sh /usr/local/bin/php-fpm-reload.sh
+RUN chmod 755 /usr/local/bin/php-fpm-reload.sh
 
 COPY packages/wkhtmltox_*.deb /tmp/
 
