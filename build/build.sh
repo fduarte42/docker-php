@@ -126,7 +126,7 @@ phpenmod errors
 # session live time
 systemctl disable phpsessionclean.service
 systemctl disable phpsessionclean.timer
-/etc/cron.d/php
+rm /etc/cron.d/php
 mkdir -p /var/tmp/php-sessions
 chown www-data:www-data /var/tmp/php-sessions
 chmod 1770 /var/tmp/php-sessions
