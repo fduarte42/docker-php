@@ -7,7 +7,7 @@ PLATFORMS=linux/amd64,linux/arm64
 
 cd build
 #VERSIONS="7.4 8.0 8.1 8.2 8.3"
-VERSIONS="7.4 8.2 8.3"
+VERSIONS="8.2 8.3 8.4"
 
 for V in $VERSIONS; do
     if [[ $V =~ (8\.2|8\.3|8\.4) ]]; then
