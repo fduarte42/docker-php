@@ -111,6 +111,9 @@ else
     php${PHP_VERSION}-apcu
 fi
 
+# apache set document root
+sed -ri -e 's!/var/www/html!/var/www/html${DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+
 # apache enable modules
 a2enmod proxy_fcgi setenvif
 a2enconf php${PHP_VERSION}-fpm

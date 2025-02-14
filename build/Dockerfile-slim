@@ -16,6 +16,8 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 # Set PHP session max lifetime
 ENV PHP_GC_MAX_LIFETIME=1440
 
+ENV DOCUMENT_ROOT=/
+
 # pre-build
 COPY config/keyboard /etc/default/keyboard
 COPY scripts/.bashrc /root/.bashrc
