@@ -28,7 +28,7 @@ for V in $VERSIONS; do
     docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" -f Dockerfile-oci -t "$BASE_IMAGENAME:$V-oci" .
     docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" --build-arg FLAVOR="-debug" -f Dockerfile-oci -t "$BASE_IMAGENAME:$V-oci-debug" .
 
-    if [[ $V =~ (8\.2|8\.3) ]]; then
+    if [[ $V =~ (8\.2|8\.3|8\.4) ]]; then
         # sourceguardian
         docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" -f Dockerfile-sourceguardian -t "$BASE_IMAGENAME:$V-sourceguardian" .
 
