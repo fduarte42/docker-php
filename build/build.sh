@@ -68,6 +68,7 @@ apt-get install -y \
   php${PHP_VERSION}-xml \
   php${PHP_VERSION}-xsl \
   php${PHP_VERSION}-zip \
+  p7zip-full \
   pngquant \
   poppler-utils \
   rsyslog \

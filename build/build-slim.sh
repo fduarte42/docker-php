@@ -65,6 +65,7 @@ apt-get install -y \
   php${PHP_VERSION}-xsl \
   php${PHP_VERSION}-zip \
   poppler-utils \
+  p7zip-full \
   rsyslog \
   sudo \
   supervisor \
