@@ -12,10 +12,10 @@ echo "xdebug.idekey=PHPSTORM" >> /etc/php/${PHP_VERSION}/mods-available/xdebug-c
 echo "display_errors=on" >> /etc/php/${PHP_VERSION}/mods-available/xdebug-config.ini
 phpenmod xdebug-config
 
-apt install -y php${PHP_VERSION}-uopz
-phpenmod uopz
-apt install -y php${PHP_VERSION}-pcov
-phpenmod pcov
+#apt install -y php${PHP_VERSION}-uopz
+#phpenmod uopz
+#apt install -y php${PHP_VERSION}-pcov
+#phpenmod pcov
 
 # cleanup
 apt-get clean
