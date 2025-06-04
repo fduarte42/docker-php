@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
 set -e
 
-#BASE_IMAGENAME=registry.gitlab.com/it-cocktail/docker-php
-BASE_IMAGENAME=fduarte42/docker-php
-PLATFORMS=linux/amd64,linux/arm64
+if [ "$GITHUB_ACTIONS" = "true" ]; then
+  echo "Running inside GitHub Actions"
+  BASE_IMAGENAME=ghcr.io/fduarte42/docker-php
+  PLATFORMS=linux/amd64,linux/arm64
+else
+  echo "Running locally"
+  BASE_IMAGENAME=fduarte42/docker-php
+  PLATFORMS=linux/amd64,linux/arm64
+fi
 
 cd build
-#VERSIONS="7.4 8.0 8.1 8.2 8.3"
 VERSIONS="8.2 8.3 8.4"
 
 for V in $VERSIONS; do
