@@ -11,8 +11,13 @@ else
   PLATFORMS=linux/amd64,linux/arm64
 fi
 
+if [ "$#" -gt 0 ]; then
+  VERSIONS="$@"
+else
+  VERSIONS="8.2 8.3 8.4"
+fi
+
 cd build
-VERSIONS="8.2 8.3 8.4"
 
 for V in $VERSIONS; do
     if [[ $V =~ (8\.2|8\.3|8\.4) ]]; then
