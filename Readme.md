@@ -1,0 +1,2 @@
+# custom PHP docker image
+[![Build and Push to GHCR](https://github.com/fduarte42/docker-php/actions/workflows/docker-build.yml/badge.svg)](https://github.com/fduarte42/docker-php/actions/workflows/docker-build.yml)
