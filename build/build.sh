@@ -72,6 +72,7 @@ apt-get install -y \
   pngquant \
   poppler-utils \
   rsyslog \
+  socat \
   sudo \
   supervisor \
   ttf-mscorefonts-installer \

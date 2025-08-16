@@ -67,6 +67,7 @@ apt-get install -y \
   poppler-utils \
   p7zip-full \
   rsyslog \
+  socat \
   sudo \
   supervisor \
   unzip \
