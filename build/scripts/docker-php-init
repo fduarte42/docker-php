@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 
 if [[ -z "$SSH_AUTH_PORT" ]]; then
+    if [[ -f /tmp/ssh-agent.sock ]]; then
+        killall socat
+        rm /tmp/ssh-agent.sock
+    fi
     socat UNIX-LISTEN:/tmp/ssh-agent.sock,fork,mode=666 TCP:"$SSH_AUTH_PORT" >/dev/null &
     export SSH_AUTH_SOCK=/tmp/ssh-agent.sock
 elif [ -d "/ssh" ]; then
