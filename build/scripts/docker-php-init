@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+if [[ -n "$SSH_AUTH_PORT" ]]; then
 if [[ -z "$SSH_AUTH_PORT" ]]; then
     if [[ -f /tmp/ssh-agent.sock ]]; then
         killall socat
