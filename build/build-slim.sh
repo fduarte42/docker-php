@@ -7,7 +7,7 @@ export TERM=linux
 # init packages
 apt-get update
 
-apt-get -y install apt-transport-https lsb-release ca-certificates curl wget gnupg
+apt-get -y install apt-transport-https lsb-release ca-certificates curl wget gnupg sudo
 wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg
 sh -c 'echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php.list'
 
@@ -16,7 +16,12 @@ sed -i 's/^Components: main$/& contrib/' /etc/apt/sources.list.d/debian.sources
 # node
 mkdir -p /etc/apt/keyrings
 curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_24.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+
+# Add Yarn APT repo
+curl -fsSL https://dl.yarnpkg.com/debian/pubkey.gpg | sudo gpg --dearmor -o /usr/share/keyrings/yarn.gpg
+echo "deb [signed-by=/usr/share/keyrings/yarn.gpg] https://dl.yarnpkg.com/debian stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+
 
 apt-get update
 apt-get remove -y --purge python3 python3-minimal python3.*
@@ -53,9 +58,7 @@ apt-get install -y \
   php${PHP_VERSION}-intl \
   php${PHP_VERSION}-ldap \
   php${PHP_VERSION}-mbstring \
-  php${PHP_VERSION}-memcached \
   php${PHP_VERSION}-mysql \
-  php${PHP_VERSION}-opcache \
   php${PHP_VERSION}-pgsql \
   php${PHP_VERSION}-redis \
   php${PHP_VERSION}-soap \
@@ -68,21 +71,39 @@ apt-get install -y \
   p7zip-full \
   rsyslog \
   socat \
-  sudo \
   supervisor \
   unzip \
   yarn
 
+
 if [[ $PHP_VERSION =~ (7\.4) ]]; then
   apt-get install -y \
+    php${PHP_VERSION}-opcache \
+    php${PHP_VERSION}-memcached \
     php${PHP_VERSION}-http \
     php${PHP_VERSION}-raphf \
     php${PHP_VERSION}-propro
-else
+elif [[ $PHP_VERSION =~ (8\.2|8\.3|8\.4) ]]; then
   apt-get install -y \
+    php${PHP_VERSION}-opcache \
+    php${PHP_VERSION}-memcached \
     php${PHP_VERSION}-http \
     php${PHP_VERSION}-raphf
-fi
+elif [[ $PHP_VERSION =~ (8\.5) ]]; then
+    apt install -y libmemcached11
+    ldconfig
+    apt install -y php8.5-dev libcurl4-openssl-dev libmemcached-dev zlib1g-dev libicu-dev build-essential
+    pecl install memcached
+    echo "extension=memcached.so" | sudo tee /etc/php/8.5/mods-available/memcached.ini
+    phpenmod memcached
+    pecl install raphf
+    echo "extension=raphf.so" | sudo tee /etc/php/8.5/mods-available/raphf.ini
+    phpenmod raphf
+    pecl install pecl_http
+    echo "extension=http.so"  | sudo tee /etc/php/8.5/mods-available/http.ini
+    phpenmod http
+    apt remove -y --purge php8.5-dev libcurl4-openssl-dev libmemcached-dev zlib1g-dev libicu-dev build-essential
+ fi
 
 update-alternatives --set php /usr/bin/php${PHP_VERSION}
 

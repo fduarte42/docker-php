@@ -2,7 +2,14 @@
 set -e
 
 apt update
-apt install -y libaio1
+apt install -y libaio1t64
+# libaio1 compatability
+for d in /usr/lib/*-linux-gnu; do
+  if [ -e "$d/libaio.so.1t64" ] && [ ! -e "$d/libaio.so.1" ]; then
+    ln -s libaio.so.1t64 "$d/libaio.so.1"
+  fi
+done
+ldconfig
 
 # extract libs and sdk
 if [ "$TARGETARCH" = "arm64" ]; then

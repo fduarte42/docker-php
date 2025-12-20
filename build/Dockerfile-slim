@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 ARG TARGETARCH
 ARG PHP_VERSION=7.4
 

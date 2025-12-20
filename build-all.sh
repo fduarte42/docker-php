@@ -23,7 +23,7 @@ PLATFORMS=linux/amd64,linux/arm64
 
 
 if [ "$#" -gt 0 ]; then
-  VERSIONS="$@"
+  VERSIONS="$*"
 else
   VERSIONS="8.2 8.3 8.4"
 fi
@@ -31,7 +31,7 @@ fi
 cd build
 
 for V in $VERSIONS; do
-    if [[ $V =~ (8\.2|8\.3|8\.4) ]]; then
+    if [[ $V =~ (8\.2|8\.3|8\.4|8\.5) ]]; then
       # slim version
       docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" -f Dockerfile-slim $(tag_args "$V-slim") .
       docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" --build-arg FLAVOR="-slim" -f Dockerfile-debug $(tag_args "$V-slim-debug") .
@@ -49,7 +49,7 @@ for V in $VERSIONS; do
     docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" -f Dockerfile-oci $(tag_args "$V-oci") .
     docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" --build-arg FLAVOR="-debug" -f Dockerfile-oci $(tag_args "$V-oci-debug") .
 
-    if [[ $V =~ (8\.2|8\.3|8\.4) ]]; then
+    if [[ $V =~ (8\.2|8\.3|8\.4|8\.5) ]]; then
         # sourceguardian
         docker buildx build --platform $PLATFORMS --push --pull --no-cache --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" -f Dockerfile-sourceguardian $(tag_args "$V-sourceguardian") .
 
