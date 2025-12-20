@@ -25,7 +25,7 @@ PLATFORMS=linux/amd64,linux/arm64
 if [ "$#" -gt 0 ]; then
   VERSIONS="$*"
 else
-  VERSIONS="8.2 8.3 8.4"
+  VERSIONS="8.2 8.3 8.4 8.5"
 fi
 
 cd build
