@@ -11,6 +11,7 @@ jobs:
     strategy:
       matrix:
         php_version: [ "7.4", "8.2", "8.3", "8.4", "8.5" ]
+        variant: [ "slim", "non-slim" ]
 
     steps:
       - name: Checkout repository
@@ -34,4 +35,8 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          ./build-all.sh ${{ matrix.php_version }}
+          if [ "${{ matrix.variant }}" = "slim" ]; then
+            ./build-all.sh -s ${{ matrix.php_version }}
+          else
+            ./build-all.sh -n ${{ matrix.php_version }}
+          fi

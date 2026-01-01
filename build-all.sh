@@ -21,6 +21,7 @@ function tag_args() {
 
 PLATFORMS=linux/amd64,linux/arm64
 SLIM_ONLY=false
+SKIP_SLIM=false
 LOCAL_BUILD=false
 
 function build_args() {
@@ -31,13 +32,16 @@ function build_args() {
   fi
 }
 
-while getopts "p:slh" opt; do
+while getopts "p:slnh" opt; do
   case $opt in
     p)
       PLATFORMS="$OPTARG"
       ;;
     s)
       SLIM_ONLY=true
+      ;;
+    n)
+      SKIP_SLIM=true
       ;;
     l)
       LOCAL_BUILD=true
@@ -48,6 +52,7 @@ while getopts "p:slh" opt; do
       echo "OPTIONS:"
       echo "  -p PLATFORMS    Comma-separated list of platforms (e.g., linux/amd64,linux/arm64)"
       echo "  -s              Build only slim versions"
+      echo "  -n              Skip slim versions"
       echo "  -l              Local build only (do not push)"
       echo "  -h              Show this help message"
       echo ""
@@ -55,6 +60,7 @@ while getopts "p:slh" opt; do
       echo "  $0 8.4                           # Build 8.4 for default platforms"
       echo "  $0 -p linux/amd64 8.4            # Build 8.4 for amd64 only"
       echo "  $0 -s 8.4                        # Build only slim variant of 8.4"
+      echo "  $0 -n 8.4                        # Build 8.4 skipping slim versions"
       echo "  $0 -l 8.4                        # Build 8.4 locally without pushing"
       echo "  $0 -p linux/arm64 -s 8.3 8.4    # Build slim variants of 8.3 and 8.4 for arm64 only"
       exit 0
@@ -78,13 +84,15 @@ cd build
 
 for V in $VERSIONS; do
     if [[ $V =~ (8\.2|8\.3|8\.4|8\.5) ]]; then
-      # slim version
-      docker buildx build --platform $PLATFORMS $(build_args) --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" -f Dockerfile-slim $(tag_args "$V-slim") .
-      docker buildx build --platform $PLATFORMS $(build_args) --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" --build-arg FLAVOR="-slim" -f Dockerfile-debug $(tag_args "$V-slim-debug") .
+      if [ "$SKIP_SLIM" = false ]; then
+        # slim version
+        docker buildx build --platform $PLATFORMS $(build_args) --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" -f Dockerfile-slim $(tag_args "$V-slim") .
+        docker buildx build --platform $PLATFORMS $(build_args) --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" --build-arg FLAVOR="-slim" -f Dockerfile-debug $(tag_args "$V-slim-debug") .
 
-      # slim oracle version
-      docker buildx build --platform $PLATFORMS $(build_args) --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" --build-arg FLAVOR="-slim" -f Dockerfile-oci $(tag_args "$V-slim-oci") .
-      docker buildx build --platform $PLATFORMS $(build_args) --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" --build-arg FLAVOR="-slim-debug" -f Dockerfile-oci $(tag_args "$V-slim-oci-debug") .
+        # slim oracle version
+        docker buildx build --platform $PLATFORMS $(build_args) --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" --build-arg FLAVOR="-slim" -f Dockerfile-oci $(tag_args "$V-slim-oci") .
+        docker buildx build --platform $PLATFORMS $(build_args) --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" --build-arg FLAVOR="-slim-debug" -f Dockerfile-oci $(tag_args "$V-slim-oci-debug") .
+      fi
     fi
 
     if [ "$SLIM_ONLY" = false ]; then
