@@ -5,22 +5,27 @@ export DEBIAN_FRONTEND=noninteractive
 export TERM=linux
 
 # init packages
+sed -i 's/^Components: main$/& contrib/' /etc/apt/sources.list.d/debian.sources
 apt-get update
 
-apt-get -y install apt-transport-https lsb-release ca-certificates curl wget gnupg sudo
-wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg
-sh -c 'echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php.list'
-
-sed -i 's/^Components: main$/& contrib/' /etc/apt/sources.list.d/debian.sources
-
-# node
+apt-get -y install apt-transport-https lsb-release ca-certificates curl gnupg
 mkdir -p /etc/apt/keyrings
+
+# Add php APT repo
+#curl -fsSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /usr/share/keyrings/deb.sury.org.gpg
+#echo "deb [signed-by=/usr/share/keyrings/deb.sury.org.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php.list
+
+# Add node APT repo (mirror)
+curl -fsSL https://mirrors.dotsrc.org/deb.sury.org/php/apt.gpg | gpg --dearmor -o /usr/share/keyrings/deb.sury.org.gpg
+echo "deb [signed-by=/usr/share/keyrings/deb.sury.org.gpg] https://mirrors.dotsrc.org/deb.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php.list
+
+# Add node APT repo
 curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
 echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_24.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
 
 # Add Yarn APT repo
-curl -fsSL https://dl.yarnpkg.com/debian/pubkey.gpg | sudo gpg --dearmor -o /usr/share/keyrings/yarn.gpg
-echo "deb [signed-by=/usr/share/keyrings/yarn.gpg] https://dl.yarnpkg.com/debian stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+curl -fsSL https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor -o /usr/share/keyrings/yarn.gpg
+echo "deb [signed-by=/usr/share/keyrings/yarn.gpg] https://dl.yarnpkg.com/debian stable main" | tee /etc/apt/sources.list.d/yarn.list
 
 
 apt-get update
@@ -71,8 +76,10 @@ apt-get install -y \
   p7zip-full \
   rsyslog \
   socat \
+  sudo \
   supervisor \
   unzip \
+  wget \
   yarn
 
 
@@ -235,9 +242,6 @@ php -r "if (hash('SHA384', file_get_contents('/tmp/composer-setup.php')) !== tri
 php /tmp/composer-setup.php --no-ansi --install-dir=/usr/local/bin --filename=composer && rm -rf /tmp/composer-setup.php
 mkdir -p /var/www/.composer && chown www-data:www-data /var/www/.composer
 
-# Install psalm
-composer global require vimeo/psalm
-
 # Install phpcs
 composer global require "squizlabs/php_codesniffer=*"
 
@@ -247,6 +251,9 @@ if [[ $PHP_VERSION =~ (7\.4) ]]; then
 else
     composer global require maglnet/composer-require-checker
 fi
+
+# Install psalm
+composer global require vimeo/psalm
 
 # setup keychain
 mkdir -p /root/.ssh
