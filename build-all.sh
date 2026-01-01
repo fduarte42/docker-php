@@ -94,6 +94,14 @@ for V in $VERSIONS; do
         # slim oracle version
         docker buildx build --platform $PLATFORMS $(build_args) --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" --build-arg FLAVOR="-slim" -f Dockerfile-oci $(tag_args "$V-slim-oci") .
         docker buildx build --platform $PLATFORMS $(build_args) --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" --build-arg FLAVOR="-slim-debug" -f Dockerfile-oci $(tag_args "$V-slim-oci-debug") .
+
+        if [[ $V =~ (8\.2|8\.3|8\.4|8\.5) ]]; then
+          # sourceguardian
+          docker buildx build --platform $PLATFORMS $(build_args) --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" --build-arg FLAVOR="-slim" -f Dockerfile-sourceguardian $(tag_args "$V-slim-sourceguardian") .
+
+          # sourceguardian with oracle
+          docker buildx build --platform $PLATFORMS $(build_args) --build-arg BASE_IMAGENAME=$BASE_IMAGENAME --build-arg PHP_VERSION="$V" --build-arg FLAVOR="-slim-oci" -f Dockerfile-sourceguardian $(tag_args "$V-slim-oci-sourceguardian") .
+        fi
       fi
     fi
 
