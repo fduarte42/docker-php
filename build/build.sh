@@ -194,8 +194,8 @@ a2enmod proxy
 a2enmod proxy_http
 
 # apache disable modules
-a2dismod autoindex
-a2dismod alias
+#a2dismod autoindex
+#a2dismod alias
 
 # disable clear env for php fpm
 sed -i "s/;clear_env = no/clear_env = no/" /etc/php/${PHP_VERSION}/fpm/pool.d/www.conf
