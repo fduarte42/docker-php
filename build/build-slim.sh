@@ -141,6 +141,7 @@ a2enconf php${PHP_VERSION}-fpm
 
 # apache disable unneeded config
 a2disconf javascript-common
+a2disconf security
 
 # Hide errors
 echo "display_errors=off" > /etc/php/${PHP_VERSION}/mods-available/errors.ini
@@ -183,6 +184,10 @@ a2enmod headers
 a2enmod expires
 a2enmod proxy
 a2enmod proxy_http
+
+# apache disable modules
+a2dismod autoindex
+a2dismod alias
 
 # disable clear env for php fpm
 sed -i "s/;clear_env = no/clear_env = no/" /etc/php/${PHP_VERSION}/fpm/pool.d/www.conf
