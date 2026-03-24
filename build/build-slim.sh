@@ -141,7 +141,6 @@ a2enconf php${PHP_VERSION}-fpm
 
 # apache disable unneeded config
 a2disconf javascript-common
-a2disconf security
 
 # Hide errors
 echo "display_errors=off" > /etc/php/${PHP_VERSION}/mods-available/errors.ini
@@ -174,9 +173,9 @@ echo "</Directory>" >> /etc/apache2/conf-available/disable-dir-list.conf
 a2enconf disable-dir-list
 
 # apache hide server signature
-echo "ServerTokens Prod" > /etc/apache2/conf-available/hide-server-signature.conf
-echo "ServerSignature Off" >> /etc/apache2/conf-available/hide-server-signature.conf
-a2enconf hide-server-signature
+echo "ServerTokens Prod" > /etc/apache2/conf-available/security.conf
+echo "ServerSignature Off" >> /etc/apache2/conf-available/security.conf
+echo "TraceEnable Off" >> /etc/apache2/conf-available/security.conf
 
 # apache enable modules
 a2enmod rewrite
