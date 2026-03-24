@@ -28,7 +28,7 @@ function build_args() {
   if [ "$LOCAL_BUILD" = true ]; then
     echo "--load --pull --no-cache"
   else
-    echo "--push --pull --no-cache"
+    echo "--push --pull"
   fi
 }
 
