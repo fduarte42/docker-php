@@ -185,6 +185,9 @@ echo "ServerTokens Prod" > /etc/apache2/conf-available/security.conf
 echo "ServerSignature Off" >> /etc/apache2/conf-available/security.conf
 echo "TraceEnable Off" >> /etc/apache2/conf-available/security.conf
 
+# apache remove default aliases
+echo "" > /etc/apache2/mods-available/alias.conf
+
 # apache enable modules
 a2enmod rewrite
 a2enmod headers
