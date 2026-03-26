@@ -1,5 +1,0 @@
-FROM fduarte42/docker-php:8.0
-
-# add debug packages
-COPY components/add-debug.sh /add-debug.sh
-RUN bash /add-debug.sh && rm /add-debug.sh
