@@ -195,15 +195,15 @@ a2enmod expires
 a2enmod proxy
 a2enmod proxy_http
 
-# apache disable modules
-#a2dismod autoindex
-#a2dismod alias
-
 # disable clear env for php fpm
 sed -i "s/;clear_env = no/clear_env = no/" /etc/php/${PHP_VERSION}/fpm/pool.d/www.conf
 
 # add php fpm link for supervisor
 ln -s /usr/sbin/php-fpm${PHP_VERSION} /usr/sbin/php-fpm
+
+# remove ghostscript to prevent imagemagick attack
+apt purge -y ghostscript
+apt autoremove -y
 
 # locales
 LOCALES="en_US en_GB fr_FR es_ES pt_PT de_DE"
