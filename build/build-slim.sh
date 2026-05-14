@@ -190,6 +190,9 @@ a2enmod proxy_http
 # disable clear env for php fpm
 sed -i "s/;clear_env = no/clear_env = no/" /etc/php/${PHP_VERSION}/fpm/pool.d/www.conf
 
+# set pid file
+sed -i "s/;pid = \/var\/run\/php\/php@PHP_MAJOR_VERSION@.@PHP_MINOR_VERSION@-fpm.pid/pid = \/var\/run\/php\/php${PHP_VERSION}-fpm.pid/" /etc/php/${PHP_VERSION}/fpm/php-fpm.conf
+
 # add php fpm link for supervisor
 ln -s /usr/sbin/php-fpm${PHP_VERSION} /usr/sbin/php-fpm
 
