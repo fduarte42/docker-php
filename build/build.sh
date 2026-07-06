@@ -35,6 +35,7 @@ echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula \
     select true | debconf-set-selections
 
 apt-get install -y \
+  acl \
   apache2 \
   bzip2 \
   chromium \
@@ -213,6 +214,11 @@ LOCALES="en_US en_GB fr_FR es_ES pt_PT de_DE"
 for L in $LOCALES; do
     localedef -i $L -c -f UTF-8 -A /etc/locale.alias $L.UTF-8
 done
+
+# adjust permissions
+setfacl -R -m u:33:rwX /var/www
+setfacl -R -d -m u:33:rwX /var/www
+
 
 # setup npm
 mkdir -p /root/.npm
