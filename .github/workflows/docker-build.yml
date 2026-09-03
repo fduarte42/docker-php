@@ -103,6 +103,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      # Docker Hub rate-limits manifest requests. All 10 of these running at once issued ~240 HEADs
+      # in under a minute and got 429s (run 33758431135); GHCR handled the same load fine.
+      max-parallel: 2
       matrix:
         php_version: ${{ fromJSON(needs.prepare.outputs.versions) }}
         variant: [ "slim", "non-slim" ]
@@ -140,11 +143,26 @@ jobs:
             exit 0
           fi
 
-          # same-registry sources keep this a pure manifest operation - no blob copying
+          # Docker Hub returns 429 under load, so every create is retried with backoff
+          retry() {
+            local n=1 max=5 delay=15
+            until "$@"; do
+              if [ "$n" -ge "$max" ]; then
+                echo "::error::failed after $max attempts: $*"
+                return 1
+              fi
+              echo "attempt $n/$max failed (usually a registry 429), retrying in ${delay}s"
+              sleep "$delay"
+              n=$((n + 1))
+              delay=$((delay * 2))
+            done
+          }
+
+          # sources are same-registry, so this only moves manifests, not image blobs
           for TAG in $TAGS; do
             for REG in ghcr.io/fduarte42/docker-php docker.io/fduarte42/docker-php; do
               echo "::group::$REG:$TAG"
-              docker buildx imagetools create -t "$REG:$TAG" \
+              retry docker buildx imagetools create -t "$REG:$TAG" \
                 "$REG:$TAG-amd64" "$REG:$TAG-arm64"
               echo "::endgroup::"
             done
