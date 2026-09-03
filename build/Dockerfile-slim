@@ -1,5 +1,7 @@
 ARG TARGETARCH
 ARG PHP_VERSION=7.4
+# unused here (these build FROM debian), declared so build-all.sh can pass it uniformly
+ARG TAG_SUFFIX=""
 
 # valkey glide needs a rust toolchain + cbindgen + protobuf compilers to compile glide's ffi core.
 # Building it in its own stage keeps all of that out of the final image, which only gets the .so.

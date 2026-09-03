@@ -1,7 +1,9 @@
 ARG PHP_VERSION=7.4
 ARG BASE_IMAGENAME=fduarte42/docker-php
 ARG FLAVOR=""
-FROM ${BASE_IMAGENAME}:${PHP_VERSION}${FLAVOR}
+# set by build-all.sh -t so a per-arch build derives from the same-arch base tag
+ARG TAG_SUFFIX=""
+FROM ${BASE_IMAGENAME}:${PHP_VERSION}${FLAVOR}${TAG_SUFFIX}
 ARG TARGETARCH
 ARG PHP_VERSION=7.4
 

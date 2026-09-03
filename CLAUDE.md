@@ -19,6 +19,8 @@ Published to `ghcr.io/fduarte42/docker-php` and `docker.io/fduarte42/docker-php`
 ./build-all.sh -l -p linux/amd64 8.4   # local only (--load --pull --no-cache), single arch
 ./build-all.sh -s 8.4                  # slim flavors only
 ./build-all.sh -n 8.4                  # skip slim flavors
+./build-all.sh -L -n 8.4               # print the tags it WOULD build, touch nothing
+./build-all.sh -p linux/arm64 -t -arm64 8.4   # single arch into ...:8.4-arm64 etc (what CI does)
 ```
 - No argument ⇒ versions default to `8.2 8.3 8.4 8.5` (note: **not** 7.4, which CI does build).
 - Without `-l` the script builds with `--push` — it publishes. Always use `-l` when experimenting.
@@ -26,12 +28,18 @@ Published to `ghcr.io/fduarte42/docker-php` and `docker.io/fduarte42/docker-php`
   into the docker image store, so pair `-l` with a single `-p` platform. `-l` also passes `--pull`, so
   derived flavors try to re-pull their base tag from the registry instead of using the just-loaded local
   image; build the base tag alone first, or accept that flavor chains only compose properly on a push build.
+- Every buildx invocation goes through the `build <tag> <dockerfile> [extra args]` helper. Add a flavor
+  by adding a `build` line, not by copying a 200-char command.
+- `-L` prints tags to **stdout** and nothing else — the "Running locally/inside GitHub Actions" banner
+  goes to stderr specifically so `-L` stays pipeable. Keep it that way; CI parses it.
+- `-t SUFFIX` appends to every tag *and* is passed as `--build-arg TAG_SUFFIX`, which the derived
+  Dockerfiles splice into their `FROM`. That is what lets one arch build in isolation.
 - There is nothing to lint or test. Verification = build the image and run it.
 
 ## Image chain (order matters — each flavor derives FROM the previously built tag)
 `Dockerfile` → `X.Y` and `Dockerfile-slim` → `X.Y-slim` are the only two images built from Debian.
-Everything else is `FROM ${BASE_IMAGENAME}:${PHP_VERSION}${FLAVOR}`, so `build-all.sh` must keep building
-base → debug → oci → sourceguardian in that sequence:
+Everything else is `FROM ${BASE_IMAGENAME}:${PHP_VERSION}${FLAVOR}${TAG_SUFFIX}`, so `build-all.sh` must
+keep building base → debug → oci → sourceguardian in that sequence:
 
 | Dockerfile | derives from | produces |
 |---|---|---|
@@ -48,7 +56,9 @@ yet the CI matrix still schedules that job.
 
 ## Layout
 - `build-all.sh` — orchestration: option parsing, registry/tag selection (GHCR+Docker Hub under
-  `GITHUB_ACTIONS=true`, else plain `fduarte42/docker-php`), and the full flavor matrix.
+  `GITHUB_ACTIONS=true`, else plain `fduarte42/docker-php`), and the full flavor matrix, expressed as
+  `build <tag> <dockerfile> [extra args]` calls. Also owns the `valkey-glide-builder` registry cache
+  (CI only) and, via `-L`, is the single source of truth for the tag list the CI merge job consumes.
 - `build/Dockerfile*` — thin; they copy assets and delegate the real work to a shell script. `Dockerfile`
   and `Dockerfile-slim` are two-stage: a `valkey-glide-builder` stage compiles the extension, and the
   final stage bind-mounts the resulting `.so` into the `build.sh` layer. `TARGETARCH`/`PHP_VERSION` are
@@ -67,15 +77,20 @@ yet the CI matrix still schedules that job.
   git** (patched wkhtmltox debs, ChartDirector, SourceGuardian loaders, Oracle Instant Client zips). Filenames
   are matched by glob in the Dockerfiles and by exact version string in `add-oci.sh` — replacing one means
   updating that script too.
-- `.github/workflows/docker-build.yml` — weekly (Thu 00:00 UTC) + `workflow_dispatch`. Matrix of
-  PHP `7.4, 8.2, 8.3, 8.4, 8.5` × `slim | non-slim`, `fail-fast: false`, adds 2G swap, logs into both
-  registries (`CR_PAT`, `DOCKERHUB_USER`, `DOCKERHUB_PAT`), then calls `./build-all.sh -s|-n <version>`.
-  Since valkey_glide compiles a Rust core, the `valkey-glide-builder` stage is the long pole: measured
-  locally on 16 cores it is ~8.5 min for `linux/amd64` but ~37.5 min for `linux/arm64` under QEMU (4.4x).
-  It is a separate stage, so buildx runs it concurrently with the main `build.sh` layer — total time is
-  roughly `max(compile, rest)` rather than their sum. On 4-vCPU runners building both platforms at once it
-  is far slower again, so if a job ever hits the 6-hour limit, split the matrix per platform (single `-p`,
-  then merge manifests) or use arm64 runners rather than trimming the extension.
+- `.github/workflows/docker-build.yml` — weekly (Thu 00:00 UTC) + `workflow_dispatch`. Three jobs:
+  - `prepare` — turns the `php_versions` dispatch input (`"all"` or a space-separated list) into a
+    matrix JSON. Use it to test one version instead of the whole fan-out; `schedule` gets all five.
+  - `build` — matrix of PHP × `slim|non-slim` × `amd64|arm64`, `fail-fast: false`, 2G swap, logs into
+    both registries (`CR_PAT`, `DOCKERHUB_USER`, `DOCKERHUB_PAT`), then
+    `./build-all.sh -s|-n -p linux/<arch> -t -<arch> <version>`. **arm64 runs on `ubuntu-24.04-arm`**
+    (free for public repos), not under QEMU — `include:` maps `arch` → `runner`.
+  - `merge` — `docker buildx imagetools create` per tag from `build-all.sh -L`, combining
+    `TAG-amd64` + `TAG-arm64` into `TAG`, once per registry so no blobs are copied between them.
+  This replaced a single job that built both platforms at once: arm64 was emulated on a 4-vCPU amd64
+  runner, which made the Rust compile ~100 min and pushed `make install` past PIE's hardcoded 300s
+  per-process timeout — `8.3-slim`/`8.5-slim` failed on it flakily (run `33710365591`). Native arm64
+  removes both problems. Byproducts now public in both registries: per-arch `…-amd64`/`…-arm64` tags
+  and `cache-valkey-glide-<version>-<arch>`. Nothing consumes them; they are safe to prune.
 - `repo.md` — longer prose overview. Partly stale: the `unsupported/` legacy-version tree it describes was
   deleted (`80a703d`), and its `build-all.sh` usage predates the option flags. Prefer this file / the sources.
 
@@ -132,8 +147,11 @@ yet the CI matrix still schedules that job.
   Bump `PIE_VERSION`/`PIE_SHA256`, `CBINDGEN_VERSION` + its two hashes, and `VALKEY_GLIDE_VERSION`
   together. PIE installs only the extension; the package's helper PHP classes are deliberately not in the
   image (consumers `composer require valkey-io/valkey-glide-php`).
-- New flavor = `add-<name>.sh` + `Dockerfile-<name>` (ARG `PHP_VERSION`/`BASE_IMAGENAME`/`FLAVOR`, `FROM`
-  the composed tag) + build lines in `build-all.sh` for both slim and non-slim, placed after their base tag.
+- New flavor = `add-<name>.sh` + `Dockerfile-<name>` (ARG `PHP_VERSION`/`BASE_IMAGENAME`/`FLAVOR`/
+  `TAG_SUFFIX`, `FROM ${BASE_IMAGENAME}:${PHP_VERSION}${FLAVOR}${TAG_SUFFIX}`) + `build` lines in
+  `build-all.sh` for both slim and non-slim, placed after their base tag. **`TAG_SUFFIX` is not
+  optional** — omit it and the flavor will pull the multi-arch base tag from the previous run instead of
+  the per-arch tag this run just pushed.
 - Every layer script ends with `apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*`.
   Preserve that; image size is a goal.
 - Deliberate security choices — do not "fix" them back: ghostscript is purged (ImageMagick attack surface,

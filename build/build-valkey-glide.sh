@@ -81,7 +81,10 @@ export CARGO_NET_GIT_FETCH_WITH_CLI=true
 
 # PIE installs only the extension; the package's helper PHP classes are deliberately not shipped
 # (consumers `composer require valkey-io/valkey-glide-php`)
+# -j: pie defaults to a single make job. Under qemu the serial `make install` of the ~49MB .so used
+# to blow pie's hardcoded 300s per-process timeout; CI builds arm64 natively now, this keeps margin.
 php${PHP_VERSION} /tmp/pie.phar install "valkey-io/valkey-glide-php:${VALKEY_GLIDE_VERSION}" \
+  --make-parallel-jobs "$(nproc)" \
   --with-php-config=/usr/bin/php-config${PHP_VERSION} \
   --skip-enable-extension \
   --no-build-tools-check \
