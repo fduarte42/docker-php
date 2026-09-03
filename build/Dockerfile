@@ -1,6 +1,18 @@
-FROM debian:trixie-slim
 ARG TARGETARCH
 ARG PHP_VERSION=7.4
+
+# valkey glide needs a rust toolchain + cbindgen + protobuf compilers to compile glide's ffi core.
+# Building it in its own stage keeps all of that out of the final image, which only gets the .so.
+FROM debian:trixie-slim AS valkey-glide-builder
+ARG TARGETARCH
+ARG PHP_VERSION
+ENV DEBIAN_FRONTEND=noninteractive
+COPY build-valkey-glide.sh /build-valkey-glide.sh
+RUN bash /build-valkey-glide.sh
+
+FROM debian:trixie-slim
+ARG TARGETARCH
+ARG PHP_VERSION
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -33,8 +45,11 @@ RUN chmod 755 /usr/local/bin/php-fpm-reload.sh
 COPY packages/wkhtmltox_*.deb /tmp/
 
 # build
+# the valkey_glide .so is bind-mounted rather than COPYed: a COPY would leave a ~50MB
+# layer behind even though build.sh only installs the file into the extension dir
 COPY build.sh /build.sh
-RUN bash /build.sh && rm /build.sh
+RUN --mount=type=bind,from=valkey-glide-builder,source=/out,target=/tmp/valkey-glide \
+    bash /build.sh && rm /build.sh
 
 # post-build
 COPY scripts/cron-foreground /usr/local/bin/cron-foreground

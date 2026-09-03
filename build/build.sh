@@ -141,88 +141,21 @@ else
     php${PHP_VERSION}-apcu
 fi
 
-# valkey glide - no sury package exists, so PIE builds it from the source release
-# (this compiles the rust ffi core, hence the toolchain installed and purged again here)
-if [[ $PHP_VERSION =~ (8\.2|8\.3|8\.4|8\.5) ]]; then
-  VALKEY_GLIDE_VERSION=1.1.2
-  VALKEY_GLIDE_RUST_VERSION=1.98.0
-  PIE_VERSION=1.4.10
-  PIE_SHA256=b88792235c8e80be568436d4cb043b49fd1869c89b64e83d23e2882ae19d70a8
-  CBINDGEN_VERSION=0.29.4
-
-  # runtime libraries - installed explicitly so the purge below keeps them
+# valkey glide - compiled in the valkey-glide-builder stage (see build-valkey-glide.sh) and
+# bind-mounted read-only at /tmp/valkey-glide by the Dockerfile, so nothing to clean up here.
+# The mount is empty for PHP versions that have no valkey_glide build.
+if [ -f /tmp/valkey-glide/valkey_glide.so ]; then
+  # the .so links against these - installed explicitly so autoremove keeps them
   apt-get install -y libprotobuf-c1 libffi8
 
-  # build dependencies - purged again at the end of this block. python3 is NOT listed:
-  # config.m4 needs it, but supervisor already pulls it in, and purging it here would
-  # take supervisor and nodejs down with it
-  apt-get install -y \
-    php${PHP_VERSION}-dev \
-    build-essential \
-    cmake \
-    libffi-dev \
-    libprotobuf-c-dev \
-    libssl-dev \
-    pkg-config \
-    protobuf-c-compiler \
-    protobuf-compiler
-
-  curl -fsSL -o /tmp/pie.phar "https://github.com/php/pie/releases/download/${PIE_VERSION}/pie.phar"
-  echo "${PIE_SHA256}  /tmp/pie.phar" | sha256sum -c -
-
-  export RUSTUP_HOME=/tmp/rustup CARGO_HOME=/tmp/cargo
-  curl -fsSL https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal --default-toolchain ${VALKEY_GLIDE_RUST_VERSION}
-  export PATH="${CARGO_HOME}/bin:${PATH}"
-
-  # cbindgen generates the ffi header - the trixie package (0.27) is too old, it does not
-  # understand edition 2024 `#[unsafe(no_mangle)]` and silently emits an empty header
-  if [ "$TARGETARCH" = "arm64" ]; then
-    CBINDGEN_ASSET=cbindgen-ubuntu22.04-aarch64
-    CBINDGEN_SHA256=1838dfc7ddfb7e941556505fa6eebc5c28553eb03118980262c760594e240bdb
-  else
-    CBINDGEN_ASSET=cbindgen-ubuntu22.04
-    CBINDGEN_SHA256=27ac237e2ad3ffaffc8ecce0c03e3caa1d1b09e691906c3cb0967367ff6d783d
-  fi
-  curl -fsSL -o /usr/local/bin/cbindgen \
-    "https://github.com/mozilla/cbindgen/releases/download/${CBINDGEN_VERSION}/${CBINDGEN_ASSET}"
-  echo "${CBINDGEN_SHA256}  /usr/local/bin/cbindgen" | sha256sum -c -
-  chmod 755 /usr/local/bin/cbindgen
-
-  # glide ships lto="fat" + codegen-units=1; relax it, this also builds under qemu
-  export CARGO_PROFILE_RELEASE_LTO=false
-  export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=$(nproc)
-  export CARGO_PROFILE_RELEASE_DEBUG=false
-  export CARGO_NET_GIT_FETCH_WITH_CLI=true
-
-  php /tmp/pie.phar install "valkey-io/valkey-glide-php:${VALKEY_GLIDE_VERSION}" \
-    --with-php-config=/usr/bin/php-config${PHP_VERSION} \
-    --skip-enable-extension \
-    --no-build-tools-check \
-    --no-system-dependencies-check \
-    --no-interaction
+  EXTENSION_DIR=$(php -r 'echo ini_get("extension_dir");')
+  install -m 644 /tmp/valkey-glide/valkey_glide.so "${EXTENSION_DIR}/valkey_glide.so"
 
   echo "extension=valkey_glide.so" > /etc/php/${PHP_VERSION}/mods-available/valkey_glide.ini
   phpenmod valkey_glide
 
   # fail the build here if the extension does not load
   php -m | grep -qx valkey_glide
-
-  # drop the toolchain again - same RUN layer, so none of it reaches the image
-  # config.m4 forces CARGO_HOME=$HOME/.cargo, so the crate registry lands in /root regardless
-  rm -rf /tmp/pie.phar /tmp/rustup /tmp/cargo /tmp/debug_glide_bindings.h \
-    /root/.cargo /root/.cache /root/.config/pie /usr/local/bin/cbindgen
-  unset RUSTUP_HOME CARGO_HOME CARGO_PROFILE_RELEASE_LTO CARGO_PROFILE_RELEASE_CODEGEN_UNITS \
-    CARGO_PROFILE_RELEASE_DEBUG CARGO_NET_GIT_FETCH_WITH_CLI
-  apt-get remove -y --purge \
-    php${PHP_VERSION}-dev \
-    build-essential \
-    cmake \
-    libffi-dev \
-    libprotobuf-c-dev \
-    libssl-dev \
-    pkg-config \
-    protobuf-c-compiler \
-    protobuf-compiler
 fi
 
 # apache set document root

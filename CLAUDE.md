@@ -42,18 +42,23 @@ base → debug → oci → sourceguardian in that sequence:
 | `Dockerfile-chartdirector` | `7.4`, `7.4-debug` | `7.4-chartdirector`, `7.4-chartdirector-debug` (7.4 only) |
 
 Version gates in `build-all.sh` are literal regexes (`8\.2|8\.3|8\.4|8\.5`): **adding a new PHP version means
-editing those regexes**, the `VERSIONS` default, the version branches in `build.sh`/`build-slim.sh`, and the
-CI matrix. Known dead combination: `./build-all.sh -s 7.4` builds nothing (slim block is gated to 8.2+),
+editing those regexes**, the `VERSIONS` default, the version branches in `build.sh`/`build-slim.sh`, the gate in
+`build/build-valkey-glide.sh`, and the CI matrix. Known dead combination: `./build-all.sh -s 7.4` builds nothing (slim block is gated to 8.2+),
 yet the CI matrix still schedules that job.
 
 ## Layout
 - `build-all.sh` — orchestration: option parsing, registry/tag selection (GHCR+Docker Hub under
   `GITHUB_ACTIONS=true`, else plain `fduarte42/docker-php`), and the full flavor matrix.
-- `build/Dockerfile*` — thin; they copy assets and delegate the real work to a shell script.
+- `build/Dockerfile*` — thin; they copy assets and delegate the real work to a shell script. `Dockerfile`
+  and `Dockerfile-slim` are two-stage: a `valkey-glide-builder` stage compiles the extension, and the
+  final stage bind-mounts the resulting `.so` into the `build.sh` layer. `TARGETARCH`/`PHP_VERSION` are
+  declared once above the first `FROM` and re-declared (bare) in both stages.
 - `build/build.sh`, `build/build-slim.sh` — the actual image construction (APT repos, PHP + extensions,
   Apache, PHP ini, Composer, permissions). **Near-duplicates that must be kept in sync.** The slim delta is
   exactly: no chromium, no wkhtmltox `.deb`, no `ttf-mscorefonts-installer`/`xfonts-base`/`xfonts-75dpi`,
   no `pngquant`.
+- `build/build-valkey-glide.sh` — runs only in the `valkey-glide-builder` stage; produces
+  `/out/valkey_glide.so` (empty `/out` for versions outside `8.2–8.5`). Shared verbatim by both Dockerfiles.
 - `build/add-*.sh` — one per optional flavor: `add-debug.sh` (xdebug), `add-oci.sh` (Oracle Instant Client
   + pecl oci8), `add-sourceguardian.sh` (ixed loader), `add-chartdirector.sh`.
 - `build/config/` — `supervisord.conf`, `keyboard`.
@@ -65,11 +70,12 @@ yet the CI matrix still schedules that job.
 - `.github/workflows/docker-build.yml` — weekly (Thu 00:00 UTC) + `workflow_dispatch`. Matrix of
   PHP `7.4, 8.2, 8.3, 8.4, 8.5` × `slim | non-slim`, `fail-fast: false`, adds 2G swap, logs into both
   registries (`CR_PAT`, `DOCKERHUB_USER`, `DOCKERHUB_PAT`), then calls `./build-all.sh -s|-n <version>`.
-  Since valkey_glide compiles a Rust core, the base/slim `build.sh` layer is now the long pole: measured
+  Since valkey_glide compiles a Rust core, the `valkey-glide-builder` stage is the long pole: measured
   locally on 16 cores it is ~8.5 min for `linux/amd64` but ~37.5 min for `linux/arm64` under QEMU (4.4x).
-  On 4-vCPU runners building both platforms at once it is far slower again, so if a job ever hits the
-  6-hour limit, split the matrix per platform (single `-p`, then merge manifests) or use arm64 runners
-  rather than trimming the extension.
+  It is a separate stage, so buildx runs it concurrently with the main `build.sh` layer — total time is
+  roughly `max(compile, rest)` rather than their sum. On 4-vCPU runners building both platforms at once it
+  is far slower again, so if a job ever hits the 6-hour limit, split the matrix per platform (single `-p`,
+  then merge manifests) or use arm64 runners rather than trimming the extension.
 - `repo.md` — longer prose overview. Partly stale: the `unsupported/` legacy-version tree it describes was
   deleted (`80a703d`), and its `build-all.sh` usage predates the option flags. Prefer this file / the sources.
 
@@ -96,22 +102,33 @@ yet the CI matrix still schedules that job.
   PHP 8.5 has no sury builds for memcached/raphf/http — those are compiled with `pecl` and the build deps
   (`php8.5-dev`, `build-essential`, …) are purged again in the same step. Keep that purge.
 - `valkey_glide` has no sury package either: a pinned, sha256-verified `pie.phar` builds it from the
-  upstream source release in `build.sh`/`build-slim.sh`, gated to 8.2–8.5. It compiles glide's Rust FFI
-  core, so the block installs a rustup toolchain (`VALKEY_GLIDE_RUST_VERSION`) + `cmake`, `libffi-dev`,
-  `libssl-dev`, `libprotobuf-c-dev` and **both** protobuf compilers — `protoc` for glide-core's build
-  script and `protoc-c` for the extension's C protobuf files — then purges them again. Non-obvious
-  constraints, all found the hard way:
+  upstream source release. Because it compiles glide's Rust FFI core, that happens in its own
+  `valkey-glide-builder` stage (`build/build-valkey-glide.sh`), gated to 8.2–8.5, which sets up the sury
+  repo, installs `php${PHP_VERSION}-cli`/`-dev` + a rustup toolchain (`VALKEY_GLIDE_RUST_VERSION`) +
+  `cmake`, `libffi-dev`, `libssl-dev`, `libprotobuf-c-dev`, `python3` (needed by `config.m4`) and **both**
+  protobuf compilers — `protoc` for glide-core's build script and `protoc-c` for the extension's C
+  protobuf files. **Nothing in that stage is purged**: it is thrown away wholesale, and only
+  `/out/valkey_glide.so` reaches the image. Non-obvious constraints, all found the hard way:
+  - The `.so` is handed over with `RUN --mount=type=bind,from=valkey-glide-builder` on the `build.sh`
+    line, **not** a `COPY --from=`. A `COPY` leaves a ~50MB layer in the image for a file that only
+    exists to be installed into the extension dir, and a later `rm` cannot reclaim it. The flip side:
+    the mount is read-only, so `build.sh` must not try to delete `/tmp/valkey-glide`.
   - `cbindgen` comes from a pinned upstream release binary per `$TARGETARCH`, **not** the trixie package:
     0.27 does not understand edition-2024 `#[unsafe(no_mangle)]` and silently emits an empty
     `glide_bindings.h`, so the C compile fails with "incomplete type" errors instead of anything obvious.
   - The rustup pin must satisfy glide's locked AWS SDK crates (≥1.91.1 as of extension 1.1.2); 1.90 is
     rejected outright by cargo.
-  - `config.m4` forces `CARGO_HOME=$HOME/.cargo`, ignoring the exported one, so the cleanup must delete
-    `/root/.cargo` — otherwise ~540MB of crate registry ships in the image.
-  - **Do not purge python3 here.** `config.m4` needs it, it is already present because `supervisor`
-    depends on it (the line-31 purge only precedes that install), and `apt-get purge python3.*` at this
-    point takes `supervisor` and `nodejs` with it — an image whose `CMD` no longer exists.
-  - `libprotobuf-c1` and `libffi8` must stay installed: the `.so` links against them.
+  - The builder stage must install PHP from the **same** sury mirror as `build.sh`, otherwise the `.so`
+    can miss the final image's Zend ABI. The `php -m | grep -qx valkey_glide` gate in `build.sh` is what
+    catches that — keep it.
+  - The install side in `build.sh`/`build-slim.sh` resolves the target directory with
+    `php -r 'echo ini_get("extension_dir");'` (same idiom as `add-chartdirector.sh`), **not**
+    `php-config${PHP_VERSION}` — `php${PHP_VERSION}-dev` is never installed in the final image.
+  - `libprotobuf-c1` and `libffi8` must stay explicitly installed: the `.so` links against them and
+    `apt-get autoremove` would otherwise take them.
+  - For a PHP version outside the gate the builder stage exits early leaving `/out` empty, and the
+    `if [ -f /tmp/valkey-glide/valkey_glide.so ]` guard in `build.sh` skips the install. That is how 7.4
+    still builds — don't replace the guard with a version regex.
   Bump `PIE_VERSION`/`PIE_SHA256`, `CBINDGEN_VERSION` + its two hashes, and `VALKEY_GLIDE_VERSION`
   together. PIE installs only the extension; the package's helper PHP classes are deliberately not in the
   image (consumers `composer require valkey-io/valkey-glide-php`).
