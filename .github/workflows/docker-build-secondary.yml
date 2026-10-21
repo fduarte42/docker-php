@@ -1,0 +1,168 @@
+name: Build and Push to GHCR (secondary)
+
+# Manual only - the scheduled docker-build.yml covers 7.4, 8.2 and 8.5; this one covers 8.3 and 8.4.
+on:
+  workflow_dispatch:
+    inputs:
+      php_versions:
+        description: 'Space-separated PHP versions to build, or "all"'
+        required: false
+        default: 'all'
+
+jobs:
+  # Turns the dispatch input into a matrix so a single version can be tested without running the
+  # whole fan-out. "all" means this workflow's versions (8.3 8.4).
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.versions.outputs.versions }}
+    steps:
+      - name: Resolve PHP versions
+        id: versions
+        # via env, not ${{ }} inside the script - the input must not be interpolated into shell
+        env:
+          PHP_VERSIONS_INPUT: ${{ inputs.php_versions }}
+        run: |
+          IN="$PHP_VERSIONS_INPUT"
+          if [ -z "$IN" ] || [ "$IN" = "all" ]; then
+            IN="8.3 8.4"
+          fi
+          JSON=$(printf '%s\n' $IN | jq -R . | jq -sc .)
+          echo "versions=$JSON" >> "$GITHUB_OUTPUT"
+          echo "Building versions: $JSON"
+
+  # One job per (version, variant, arch). arm64 runs on a native arm runner instead of under QEMU,
+  # so each job builds a single platform into an arch-suffixed tag; the merge job stitches them.
+  build:
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        php_version: ${{ fromJSON(needs.prepare.outputs.versions) }}
+        variant: [ "slim", "non-slim" ]
+        arch: [ "amd64", "arm64" ]
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Add swap space
+        run: |
+          sudo swapoff -a
+          sudo rm -f /swapfile
+          sudo fallocate -l 2G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=2048
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache
+          df -h /
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+        with:
+          driver: docker-container
+          driver-opts: network=host
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.CR_PAT }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_PAT }}
+
+      - name: Build and push Docker image
+        env:
+          PHPV: ${{ matrix.php_version }}
+          VARIANT: ${{ matrix.variant }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          if [ "$VARIANT" = "slim" ]; then FLAG=-s; else FLAG=-n; fi
+          ./build-all.sh "$FLAG" -p "linux/$ARCH" -t "-$ARCH" "$PHPV"
+
+  # Combines ...:TAG-amd64 and ...:TAG-arm64 into the real multi-arch ...:TAG. The tag list comes
+  # from build-all.sh -L so the flavor matrix is not duplicated here.
+  merge:
+    needs: [ prepare, build ]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # Docker Hub rate-limits manifest requests. All 10 of these running at once issued ~240 HEADs
+      # in under a minute and got 429s (run 33758431135); GHCR handled the same load fine.
+      max-parallel: 2
+      matrix:
+        php_version: ${{ fromJSON(needs.prepare.outputs.versions) }}
+        variant: [ "slim", "non-slim" ]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.CR_PAT }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_PAT }}
+
+      - name: Merge per-arch tags into multi-arch manifests
+        env:
+          PHPV: ${{ matrix.php_version }}
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          if [ "$VARIANT" = "slim" ]; then FLAG=-s; else FLAG=-n; fi
+          TAGS=$(./build-all.sh -L "$FLAG" "$PHPV")
+
+          if [ -z "$TAGS" ]; then
+            echo "No tags for $PHPV / $VARIANT - nothing to merge"
+            exit 0
+          fi
+
+          # Docker Hub returns 429 under load, so every create is retried with backoff
+          retry() {
+            local n=1 max=5 delay=15
+            until "$@"; do
+              if [ "$n" -ge "$max" ]; then
+                echo "::error::failed after $max attempts: $*"
+                return 1
+              fi
+              echo "attempt $n/$max failed (usually a registry 429), retrying in ${delay}s"
+              sleep "$delay"
+              n=$((n + 1))
+              delay=$((delay * 2))
+            done
+          }
+
+          # sources are same-registry, so this only moves manifests, not image blobs
+          for TAG in $TAGS; do
+            for REG in ghcr.io/fduarte42/docker-php docker.io/fduarte42/docker-php; do
+              echo "::group::$REG:$TAG"
+              retry docker buildx imagetools create -t "$REG:$TAG" \
+                "$REG:$TAG-amd64" "$REG:$TAG-arm64"
+              echo "::endgroup::"
+            done
+          done

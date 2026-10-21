@@ -77,9 +77,12 @@ yet the CI matrix still schedules that job.
   git** (patched wkhtmltox debs, ChartDirector, SourceGuardian loaders, Oracle Instant Client zips). Filenames
   are matched by glob in the Dockerfiles and by exact version string in `add-oci.sh` — replacing one means
   updating that script too.
-- `.github/workflows/docker-build.yml` — weekly (Thu 00:00 UTC) + `workflow_dispatch`. Three jobs:
+- `.github/workflows/docker-build.yml` — weekly (Thu 00:00 UTC) + `workflow_dispatch`, builds **7.4, 8.2, 8.5**.
+  `.github/workflows/docker-build-secondary.yml` is an identical copy that builds **8.3, 8.4** and runs only
+  on `workflow_dispatch` (no schedule). Keep the two in sync when editing the jobs. Three jobs:
   - `prepare` — turns the `php_versions` dispatch input (`"all"` or a space-separated list) into a
-    matrix JSON. Use it to test one version instead of the whole fan-out; `schedule` gets all five.
+    matrix JSON. Use it to test one version instead of the whole fan-out; `"all"`/`schedule` get that
+    workflow's own version list.
   - `build` — matrix of PHP × `slim|non-slim` × `amd64|arm64`, `fail-fast: false`, 2G swap, logs into
     both registries (`CR_PAT`, `DOCKERHUB_USER`, `DOCKERHUB_PAT`), then
     `./build-all.sh -s|-n -p linux/<arch> -t -<arch> <version>`. **arm64 runs on `ubuntu-24.04-arm`**
