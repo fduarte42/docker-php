@@ -12,7 +12,7 @@ on:
 
 jobs:
   # Turns the dispatch input into a matrix so a single version can be tested without running the
-  # whole fan-out. "all" means this workflow's versions (7.4 8.2 8.5); 8.3 and 8.4 live in docker-build-secondary.yml.
+  # whole fan-out. "all" means this workflow's versions (7.4 8.2 8.5); 5.6, 8.3 and 8.4 live in docker-build-secondary.yml.
   prepare:
     runs-on: ubuntu-latest
     outputs:

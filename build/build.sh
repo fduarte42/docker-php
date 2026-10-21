@@ -60,7 +60,6 @@ apt-get install -y \
   php${PHP_VERSION}-bz2 \
   php${PHP_VERSION}-common \
   php${PHP_VERSION}-curl \
-  php${PHP_VERSION}-decimal \
   php${PHP_VERSION}-gd \
   php${PHP_VERSION}-imagick \
   php${PHP_VERSION}-imap \
@@ -91,7 +90,19 @@ apt-get install -y \
   yarn
 
 
-if [[ $PHP_VERSION =~ (7\.4) ]]; then
+# no decimal package for 5.6
+if [[ ! $PHP_VERSION =~ (5\.6) ]]; then
+  apt-get install -y php${PHP_VERSION}-decimal
+fi
+
+if [[ $PHP_VERSION =~ (5\.6) ]]; then
+  # no sury http package for 5.6
+  apt-get install -y \
+    php${PHP_VERSION}-opcache \
+    php${PHP_VERSION}-memcached \
+    php${PHP_VERSION}-raphf \
+    php${PHP_VERSION}-propro
+elif [[ $PHP_VERSION =~ (7\.4) ]]; then
   apt-get install -y \
     php${PHP_VERSION}-opcache \
     php${PHP_VERSION}-memcached \
@@ -105,16 +116,26 @@ elif [[ $PHP_VERSION =~ (8\.2|8\.3|8\.4) ]]; then
     php${PHP_VERSION}-http \
     php${PHP_VERSION}-raphf
 elif [[ $PHP_VERSION =~ (8\.5) ]]; then
+    # pecl.php.net 404s the release metadata the PEAR client resolves versions from (allreleases2.xml)
+    # and intermittently 500s on downloads, so resolve the stable version and fetch the tarball with
+    # curl, then let pecl install it from the local file
+    pecl_install() {
+      local pkg=$1 ver
+      ver=$(curl -fsSL --retry 5 --retry-all-errors https://pecl.php.net/rest/r/${pkg}/stable.txt)
+      curl -fsSL --retry 5 --retry-all-errors -o /tmp/${pkg}.tgz https://pecl.php.net/get/${pkg}-${ver}.tgz
+      pecl install /tmp/${pkg}.tgz
+      rm /tmp/${pkg}.tgz
+    }
     apt install -y libmemcached11
     ldconfig
     apt install -y php8.5-dev libcurl4-openssl-dev libmemcached-dev zlib1g-dev libicu-dev build-essential
-    pecl install memcached
+    pecl_install memcached
     echo "extension=memcached.so" | sudo tee /etc/php/8.5/mods-available/memcached.ini
     phpenmod memcached
-    pecl install raphf
+    pecl_install raphf
     echo "extension=raphf.so" | sudo tee /etc/php/8.5/mods-available/raphf.ini
     phpenmod raphf
-    pecl install pecl_http
+    pecl_install pecl_http
     echo "extension=http.so"  | sudo tee /etc/php/8.5/mods-available/http.ini
     phpenmod http
     apt remove -y --purge php8.5-dev libcurl4-openssl-dev libmemcached-dev zlib1g-dev libicu-dev build-essential
@@ -280,21 +301,28 @@ curl -o /tmp/composer-setup.sig https://composer.github.io/installer.sig
 php -r "if (hash('SHA384', file_get_contents('/tmp/composer-setup.php')) !== trim(file_get_contents('/tmp/composer-setup.sig'))) { unlink('/tmp/composer-setup.php'); echo 'Invalid installer' . PHP_EOL; exit(1); }"
 
 # Install Composer
-php /tmp/composer-setup.php --no-ansi --install-dir=/usr/local/bin --filename=composer && rm -rf /tmp/composer-setup.php
+# composer 2.2 LTS is the last line that runs on PHP < 7.2.5
+if [[ $PHP_VERSION =~ (5\.6) ]]; then
+  COMPOSER_CHANNEL=--2.2
+else
+  COMPOSER_CHANNEL=
+fi
+php /tmp/composer-setup.php --no-ansi $COMPOSER_CHANNEL --install-dir=/usr/local/bin --filename=composer && rm -rf /tmp/composer-setup.php
 mkdir -p /var/www/.composer && chown www-data:www-data /var/www/.composer
 
 # Install phpcs
 composer global require "squizlabs/php_codesniffer=*"
 
-# Install composer-require-checker
-if [[ $PHP_VERSION =~ (7\.4) ]]; then
+# Install composer-require-checker and psalm - neither has a release for PHP 5
+if [[ $PHP_VERSION =~ (5\.6) ]]; then
+    echo "skipping composer-require-checker and psalm on PHP ${PHP_VERSION}"
+elif [[ $PHP_VERSION =~ (7\.4) ]]; then
     composer global require maglnet/composer-require-checker:3.8.0
+    composer global require vimeo/psalm
 else
     composer global require maglnet/composer-require-checker
+    composer global require vimeo/psalm
 fi
-
-# Install psalm
-composer global require vimeo/psalm
 
 # replace wkthtmltopdf with patched qt version
 if [ "$TARGETARCH" = "arm64" ]; then

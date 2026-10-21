@@ -78,7 +78,7 @@ yet the CI matrix still schedules that job.
   are matched by glob in the Dockerfiles and by exact version string in `add-oci.sh` — replacing one means
   updating that script too.
 - `.github/workflows/docker-build.yml` — weekly (Thu 00:00 UTC) + `workflow_dispatch`, builds **7.4, 8.2, 8.5**.
-  `.github/workflows/docker-build-secondary.yml` is an identical copy that builds **8.3, 8.4** and runs only
+  `.github/workflows/docker-build-secondary.yml` is an identical copy that builds **5.6, 8.3, 8.4** and runs only
   on `workflow_dispatch` (no schedule). Keep the two in sync when editing the jobs. Three jobs:
   - `prepare` — turns the `php_versions` dispatch input (`"all"` or a space-separated list) into a
     matrix JSON. Use it to test one version instead of the whole fan-out; `"all"`/`schedule` get that
@@ -119,6 +119,10 @@ yet the CI matrix still schedules that job.
 - Version-specific package differences use the `[[ $PHP_VERSION =~ (…) ]]` branch idiom already in `build.sh`.
   PHP 8.5 has no sury builds for memcached/raphf/http — those are compiled with `pecl` and the build deps
   (`php8.5-dev`, `build-essential`, …) are purged again in the same step. Keep that purge.
+  Never call `pecl install <name>` / `pecl download` directly: pecl.php.net 404s the PEAR release metadata
+  (`allreleases2.xml`) and intermittently 500s on downloads (run `39619156205`). Resolve the version from
+  `rest/r/<pkg>/stable.txt`, fetch the tarball with `curl --retry 5 --retry-all-errors`, and `pecl install` the
+  local file — see `pecl_install` in `build.sh` and the oci8 download in `add-oci.sh`.
 - `valkey_glide` has no sury package either: a pinned, sha256-verified `pie.phar` builds it from the
   upstream source release. Because it compiles glide's Rust FFI core, that happens in its own
   `valkey-glide-builder` stage (`build/build-valkey-glide.sh`), gated to 8.2–8.5, which sets up the sury
@@ -160,6 +164,9 @@ yet the CI matrix still schedules that job.
 - Deliberate security choices — do not "fix" them back: ghostscript is purged (ImageMagick attack surface,
   `3e790ef`), `display_errors=off` + `log_errors=on`, `ServerTokens Prod` / `ServerSignature Off` /
   `TraceEnable Off`, directory listing off, python3 purged, `javascript-common` conf disabled.
+- PHP 5.6 builds only the non-slim chain (`5.6`, `-debug`, `-oci`, `-oci-debug`), like 7.4. Its deltas, all
+  `(5\.6)` branches: no `decimal`/`http` packages, Composer pinned to the 2.2 LTS channel, no psalm /
+  composer-require-checker, xdebug 2 `remote_*` settings in `add-debug.sh`, oci8 `2.0.12`.
 - Timezone/locale are fixed: `Europe/Berlin`, locales `en_US en_GB fr_FR es_ES pt_PT de_DE`.
 
 ## Branching

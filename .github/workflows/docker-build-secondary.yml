@@ -1,6 +1,6 @@
 name: Build and Push to GHCR (secondary)
 
-# Manual only - the scheduled docker-build.yml covers 7.4, 8.2 and 8.5; this one covers 8.3 and 8.4.
+# Manual only - the scheduled docker-build.yml covers 7.4, 8.2 and 8.5; this one covers 5.6, 8.3 and 8.4.
 on:
   workflow_dispatch:
     inputs:
@@ -11,7 +11,7 @@ on:
 
 jobs:
   # Turns the dispatch input into a matrix so a single version can be tested without running the
-  # whole fan-out. "all" means this workflow's versions (8.3 8.4).
+  # whole fan-out. "all" means this workflow's versions (5.6 8.3 8.4).
   prepare:
     runs-on: ubuntu-latest
     outputs:
@@ -25,7 +25,7 @@ jobs:
         run: |
           IN="$PHP_VERSIONS_INPUT"
           if [ -z "$IN" ] || [ "$IN" = "all" ]; then
-            IN="8.3 8.4"
+            IN="5.6 8.3 8.4"
           fi
           JSON=$(printf '%s\n' $IN | jq -R . | jq -sc .)
           echo "versions=$JSON" >> "$GITHUB_OUTPUT"

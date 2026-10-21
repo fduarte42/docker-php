@@ -32,7 +32,9 @@ ldconfig
 
 apt install -y php${PHP_VERSION}-dev
 
-if [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
+if [[ $PHP_VERSION =~ (5\.6) ]]; then
+  OCI_VERSION=2.0.12
+elif [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
   OCI_VERSION=2.2.0
 elif [[ $PHP_VERSION =~ (8\.0) ]]; then
   OCI_VERSION=3.0.1
@@ -42,7 +44,9 @@ fi
 
 # install oci8
 cd /tmp
-pecl download oci8-${OCI_VERSION}
+# fetched with curl, not `pecl download`: pecl.php.net 404s the release metadata the PEAR client
+# needs (allreleases2.xml) and intermittently 500s on downloads
+curl -fsSLO --retry 5 --retry-all-errors https://pecl.php.net/get/oci8-${OCI_VERSION}.tgz
 tar xvzf oci8-${OCI_VERSION}.tgz
 rm oci8-${OCI_VERSION}.tgz
 cd oci8-${OCI_VERSION}
