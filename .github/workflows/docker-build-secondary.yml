@@ -2,6 +2,8 @@ name: Build and Push to GHCR (secondary)
 
 # Manual only - the scheduled docker-build.yml covers 7.4, 8.2 and 8.5; this one covers 5.6, 8.3 and 8.4.
 on:
+  schedule:
+    - cron: '0 12 1 * *'
   workflow_dispatch:
     inputs:
       php_versions:
