@@ -175,7 +175,7 @@ for V in $VERSIONS; do
           build "$V-oci-sourceguardian"      Dockerfile-sourceguardian --build-arg FLAVOR="-oci"
       fi
 
-      if [[ $V =~ (7\.4) ]]; then
+      if [[ $V =~ (7\.4|8\.2) ]]; then
           # chartdirector
           build "$V-chartdirector"           Dockerfile-chartdirector
           build "$V-chartdirector-debug"     Dockerfile-chartdirector --build-arg FLAVOR="-debug"

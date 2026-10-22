@@ -47,7 +47,7 @@ keep building base → debug → oci → sourceguardian in that sequence:
 | `Dockerfile-debug` | `X.Y` / `X.Y-slim` | `X.Y-debug`, `X.Y-slim-debug` |
 | `Dockerfile-oci` | `X.Y`, `X.Y-debug`, `X.Y-slim`, `X.Y-slim-debug` | `X.Y-oci`, `X.Y-oci-debug`, `X.Y-slim-oci`, `X.Y-slim-oci-debug` |
 | `Dockerfile-sourceguardian` | `X.Y`, `X.Y-oci`, `X.Y-slim`, `X.Y-slim-oci` | `…-sourceguardian` variants (8.2+ only) |
-| `Dockerfile-chartdirector` | `7.4`, `7.4-debug` | `7.4-chartdirector`, `7.4-chartdirector-debug` (7.4 only) |
+| `Dockerfile-chartdirector` | `X.Y`, `X.Y-debug` | `X.Y-chartdirector`, `X.Y-chartdirector-debug` (7.4 and 8.2 only, non-slim; the vendored tarballs ship `phpchartdir<ver>.dll` up to 8.3 — nothing for 8.4/8.5) |
 
 Version gates in `build-all.sh` are literal regexes (`8\.2|8\.3|8\.4|8\.5`): **adding a new PHP version means
 editing those regexes**, the `VERSIONS` default, the version branches in `build.sh`/`build-slim.sh`, the gate in
