@@ -32,6 +32,10 @@ apt-get update
 apt-get remove -y --purge python3 python3-minimal python3.*
 apt-get upgrade -y
 
+# debian slim drops man pages via dpkg path-exclude; the openjdk postinst (pulled in by pdftk-java)
+# still registers man1 alternatives and fails if the directory is missing
+mkdir -p /usr/share/man/man1
+
 apt-get install -y \
   acl \
   apache2 \
@@ -74,6 +78,7 @@ apt-get install -y \
   php${PHP_VERSION}-zip \
   poppler-utils \
   p7zip-full \
+  pdftk-java \
   rsyslog \
   socat \
   sudo \

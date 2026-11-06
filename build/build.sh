@@ -34,6 +34,10 @@ apt-get upgrade -y
 echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula \
     select true | debconf-set-selections
 
+# debian slim drops man pages via dpkg path-exclude; the openjdk postinst (pulled in by pdftk-java)
+# still registers man1 alternatives and fails if the directory is missing
+mkdir -p /usr/share/man/man1
+
 apt-get install -y \
   acl \
   apache2 \
@@ -76,6 +80,7 @@ apt-get install -y \
   php${PHP_VERSION}-xsl \
   php${PHP_VERSION}-zip \
   p7zip-full \
+  pdftk-java \
   pngquant \
   poppler-utils \
   rsyslog \
