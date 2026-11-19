@@ -74,7 +74,8 @@ yet the CI matrix still schedules that job.
 - `build/add-*.sh` — one per optional flavor: `add-debug.sh` (xdebug), `add-oci.sh` (Oracle Instant Client
   + pecl oci8), `add-sourceguardian.sh` (ixed loader), `add-chartdirector.sh`.
 - `build/config/` — `supervisord.conf`, `keyboard`.
-- `build/scripts/` — baked into the image: `docker-php-init`, `cron-foreground`, `php-fpm-reload.sh`, `.bashrc`.
+- `build/scripts/` — baked into the image: `docker-php-init`, `cron-foreground`, `php-fpm-reload.sh`, `.bashrc`,
+  `pdftk`.
 - `build/packages/`, `build/extension/`, `build/driver/oracle/` — **vendored third-party binaries committed to
   git** (patched wkhtmltox debs, ChartDirector, SourceGuardian loaders, Oracle Instant Client zips). Filenames
   are matched by glob in the Dockerfiles and by exact version string in `add-oci.sh` — replacing one means
@@ -171,6 +172,13 @@ yet the CI matrix still schedules that job.
 - PHP 5.6 builds only the non-slim chain (`5.6`, `-debug`, `-oci`, `-oci-debug`), like 7.4. Its deltas, all
   `(5\.6)` branches: no `decimal`/`http` packages, Composer pinned to the 2.2 LTS channel, no psalm /
   composer-require-checker, xdebug 2 `remote_*` settings in `add-debug.sh`, oci8 `2.0.12`.
+- `pdftk` is **not** pdftk-java (that pulled ~195MB of JRE): `/usr/local/bin/pdftk` is a PHP shim
+  (`build/scripts/pdftk`) that implements pdftk's CLI grammar on top of the `qpdf` package — cat, shuffle,
+  burst, rotate, stamp/background (+multi), fill_form (FDF/XFDF, via `qpdf --update-from-json` +
+  `--generate-appearances`), dump_data[_fields][_utf8], update_info[_utf8], input_pw/owner_pw/user_pw/allow,
+  flatten. Unsupported operations exit 1 with a message. It runs on every image, so it **must stay PHP 5.6
+  compatible** (`docker run --rm -v $PWD/build/scripts:/s php:5.6-cli php -l /s/pdftk`). `encrypt_128bit` maps
+  to AES-128, not RC4: qpdf 12 refuses RC4 as weak crypto.
 - Timezone/locale are fixed: `Europe/Berlin`, locales `en_US en_GB fr_FR es_ES pt_PT de_DE`.
 
 ## Branching

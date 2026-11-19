@@ -1,0 +1,1145 @@
+#!/usr/bin/php -dxdebug.mode=off
+<?php
+/*
+ * pdftk compatibility shim on top of qpdf, so the images need no Java runtime (pdftk-java).
+ *
+ * Implements the pdftk command-line grammar for the commonly used operations:
+ *   cat, shuffle, burst, rotate, stamp, multistamp, background, multibackground,
+ *   fill_form, dump_data[_utf8], dump_data_fields[_utf8], update_info[_utf8]
+ * and the output options input_pw, owner_pw, user_pw, encrypt_40bit/128bit/aes128, allow,
+ * flatten, need_appearances, compress, uncompress.
+ *
+ * Not supported (exits 1 with a message): generate_fdf, dump_data_annots, attach_files,
+ * unpack_files, bookmark/page label changes via update_info.
+ *
+ * Must stay PHP 5.6 compatible: it runs on every image, including 5.6 and 7.4.
+ */
+
+error_reporting(E_ALL);
+ini_set('display_errors', 'stderr');
+ini_set('log_errors', '0');
+// escapeshellarg() drops non-ASCII bytes unless LC_CTYPE is a UTF-8 locale
+setlocale(LC_CTYPE, 'C.UTF-8');
+
+$GLOBALS['TMP_FILES'] = array();
+register_shutdown_function(function () {
+    foreach ($GLOBALS['TMP_FILES'] as $f) {
+        @unlink($f);
+    }
+});
+
+function fail($msg)
+{
+    fwrite(STDERR, "Error: $msg\n");
+    exit(1);
+}
+
+function tmp_path()
+{
+    $p = tempnam(sys_get_temp_dir(), 'pdftk');
+    $GLOBALS['TMP_FILES'][] = $p;
+    return $p;
+}
+
+function stdin_to_tmp()
+{
+    $p = tmp_path();
+    file_put_contents($p, file_get_contents('php://stdin'));
+    return $p;
+}
+
+// ---------------------------------------------------------------------------------------------
+// qpdf invocation
+
+function qpdf_cmd($args)
+{
+    $cmd = 'qpdf --warning-exit-0';
+    foreach ($args as $a) {
+        $cmd .= ' ' . escapeshellarg($a);
+    }
+    return $cmd;
+}
+
+// runs qpdf with stdout/stderr passed through (output "-" streams the PDF to our stdout)
+function qpdf_run($args)
+{
+    passthru(qpdf_cmd($args), $rc);
+    if ($rc !== 0) {
+        exit(1);
+    }
+}
+
+function qpdf_capture($args)
+{
+    $proc = proc_open(qpdf_cmd($args), array(1 => array('pipe', 'w'), 2 => STDERR), $pipes);
+    if (!is_resource($proc)) {
+        fail('could not run qpdf');
+    }
+    $out = stream_get_contents($pipes[1]);
+    fclose($pipes[1]);
+    if (proc_close($proc) !== 0) {
+        exit(1);
+    }
+    return $out;
+}
+
+function pw_args($in)
+{
+    return $in['pw'] === null ? array() : array('--password=' . $in['pw']);
+}
+
+function npages($in)
+{
+    static $cache = array();
+    $key = $in['path'] . "\0" . $in['pw'];
+    if (!isset($cache[$key])) {
+        $cache[$key] = (int) trim(qpdf_capture(array_merge(array('--show-npages'), pw_args($in), array($in['path']))));
+    }
+    return $cache[$key];
+}
+
+// qpdf --json=2 dump of an input; objects stay stdClass so empty dicts survive a re-encode
+function q_json($in, $keys)
+{
+    $args = array('--json=2');
+    foreach ($keys as $k) {
+        $args[] = '--json-key=' . $k;
+    }
+    $j = json_decode(qpdf_capture(array_merge($args, pw_args($in), array($in['path']))));
+    if (!is_object($j)) {
+        fail('could not parse qpdf JSON output');
+    }
+    return $j;
+}
+
+function is_ref($v)
+{
+    return is_string($v) && preg_match('/^\d+ \d+ R$/', $v);
+}
+
+function obj_value($objs, $ref)
+{
+    $k = 'obj:' . $ref;
+    if (!isset($objs->$k)) {
+        return null;
+    }
+    $o = $objs->$k;
+    if (isset($o->value)) {
+        return $o->value;
+    }
+    return isset($o->stream->dict) ? $o->stream->dict : null;
+}
+
+function resolve($objs, $v)
+{
+    return is_ref($v) ? obj_value($objs, $v) : $v;
+}
+
+function dict_get($objs, $dict, $key)
+{
+    return (is_object($dict) && isset($dict->$key)) ? resolve($objs, $dict->$key) : null;
+}
+
+// qpdf JSON v2 scalar (u:text, b:hex, /Name, number) -> UTF-8 text
+function json_text($v)
+{
+    if (is_string($v)) {
+        if (substr($v, 0, 2) === 'u:') {
+            return substr($v, 2);
+        }
+        if (substr($v, 0, 2) === 'b:') {
+            return bytes_to_utf8(hex2bin(substr($v, 2)));
+        }
+        if (substr($v, 0, 1) === '/') {
+            return name_decode(substr($v, 1));
+        }
+        return $v;
+    }
+    if (is_bool($v)) {
+        return $v ? 'true' : 'false';
+    }
+    return is_numeric($v) ? num($v) : null;
+}
+
+function bytes_to_utf8($s)
+{
+    if (substr($s, 0, 2) === "\xFE\xFF") {
+        return mb_convert_encoding(substr($s, 2), 'UTF-8', 'UTF-16BE');
+    }
+    if (substr($s, 0, 3) === "\xEF\xBB\xBF") {
+        return substr($s, 3);
+    }
+    return mb_check_encoding($s, 'UTF-8') ? $s : mb_convert_encoding($s, 'UTF-8', 'ISO-8859-1');
+}
+
+function name_decode($n)
+{
+    return preg_replace_callback('/#([0-9A-Fa-f]{2})/', function ($m) {
+        return chr(hexdec($m[1]));
+    }, $n);
+}
+
+function num($n)
+{
+    if ((float) $n == (int) $n) {
+        return (string) (int) $n;
+    }
+    return rtrim(rtrim(sprintf('%.4f', $n), '0'), '.');
+}
+
+// non-utf8 dump variants encode everything outside ASCII as XML numeric entities, like pdftk
+function out_text($s, $utf8)
+{
+    if ($utf8) {
+        return $s;
+    }
+    $res = '';
+    foreach (unpack('N*', mb_convert_encoding($s, 'UTF-32BE', 'UTF-8')) as $cp) {
+        $res .= $cp < 128 ? chr($cp) : '&#' . $cp . ';';
+    }
+    return $res;
+}
+
+function write_text($text, $output)
+{
+    if ($output === null || $output === '-') {
+        fwrite(STDOUT, $text);
+    } elseif (file_put_contents($output, $text) === false) {
+        fail("unable to write $output");
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// command-line parsing
+
+$OPERATIONS = array(
+    'cat', 'shuffle', 'burst', 'rotate', 'generate_fdf', 'fill_form', 'background', 'multibackground',
+    'stamp', 'multistamp', 'dump_data', 'dump_data_utf8', 'dump_data_fields', 'dump_data_fields_utf8',
+    'dump_data_annots', 'update_info', 'update_info_utf8', 'attach_files', 'unpack_files',
+);
+$OUTPUT_OPTIONS = array(
+    'output', 'encrypt_40bit', 'encrypt_128bit', 'encrypt_aes128', 'allow', 'owner_pw', 'user_pw',
+    'flatten', 'need_appearances', 'compress', 'uncompress', 'keep_first_id', 'keep_final_id',
+    'drop_xfa', 'drop_xmp', 'verbose', 'dont_ask', 'do_ask', 'replacement_font',
+);
+$KEYWORDS = array_merge($OPERATIONS, $OUTPUT_OPTIONS, array('input_pw'));
+
+function is_kw($tok, $list)
+{
+    return in_array(strtolower($tok), $list, true);
+}
+
+$argv_ = array_slice($argv, 1);
+if (!$argv_ || in_array($argv_[0], array('--help', '-h', '--version', 'help'), true)) {
+    fwrite(STDOUT, "pdftk (qpdf-based compatibility shim)\n"
+        . "usage: pdftk <input PDFs> [input_pw <pws>] <operation> <args> [output <file>] [<output options>]\n"
+        . "operations: cat shuffle burst rotate stamp multistamp background multibackground fill_form\n"
+        . "            dump_data dump_data_utf8 dump_data_fields dump_data_fields_utf8 update_info update_info_utf8\n");
+    exit(0);
+}
+
+$inputs = array();
+$handles = array();
+$i = 0;
+$n = count($argv_);
+while ($i < $n && !is_kw($argv_[$i], $KEYWORDS)) {
+    $tok = $argv_[$i++];
+    $handle = null;
+    if (preg_match('/^([A-Z]+)=(.+)$/s', $tok, $m)) {
+        $handle = $m[1];
+        $tok = $m[2];
+    }
+    if ($tok === '-') {
+        $tok = stdin_to_tmp();
+    } elseif (!is_file($tok)) {
+        fail("Unable to find file: $tok");
+    }
+    if ($handle !== null) {
+        $handles[$handle] = count($inputs);
+    }
+    $inputs[] = array('path' => $tok, 'pw' => null);
+}
+if (!$inputs) {
+    fail('no input files given');
+}
+
+if ($i < $n && strtolower($argv_[$i]) === 'input_pw') {
+    $i++;
+    $next = 0;
+    while ($i < $n && !is_kw($argv_[$i], $KEYWORDS)) {
+        $tok = $argv_[$i++];
+        if (preg_match('/^([A-Z]+)=(.*)$/s', $tok, $m) && isset($handles[$m[1]])) {
+            $inputs[$handles[$m[1]]]['pw'] = $m[2];
+        } elseif ($next < count($inputs)) {
+            $inputs[$next++]['pw'] = $tok;
+        }
+    }
+}
+
+$op = 'cat';
+$opArgs = array();
+if ($i < $n && is_kw($argv_[$i], $OPERATIONS)) {
+    $op = strtolower($argv_[$i++]);
+    while ($i < $n && !is_kw($argv_[$i], $OUTPUT_OPTIONS)) {
+        $opArgs[] = $argv_[$i++];
+    }
+}
+
+$opts = array(
+    'output' => null, 'encrypt' => null, 'allow' => array(), 'owner_pw' => null, 'user_pw' => null,
+    'flatten' => false, 'need_appearances' => false, 'compress' => false, 'uncompress' => false,
+);
+while ($i < $n) {
+    $kw = strtolower($argv_[$i++]);
+    switch ($kw) {
+        case 'output':
+        case 'owner_pw':
+        case 'user_pw':
+            if ($i >= $n) {
+                fail("missing argument after $kw");
+            }
+            $opts[$kw] = $argv_[$i++];
+            break;
+        case 'encrypt_40bit':
+        case 'encrypt_128bit':
+        case 'encrypt_aes128':
+            $opts['encrypt'] = substr($kw, 8);
+            break;
+        case 'allow':
+            while ($i < $n && !is_kw($argv_[$i], $OUTPUT_OPTIONS)) {
+                $opts['allow'][] = strtolower($argv_[$i++]);
+            }
+            break;
+        case 'flatten':
+        case 'need_appearances':
+        case 'compress':
+        case 'uncompress':
+            $opts[$kw] = true;
+            break;
+        case 'replacement_font':
+            $i++;
+            break;
+        case 'keep_first_id':
+        case 'keep_final_id':
+        case 'drop_xfa':
+        case 'drop_xmp':
+        case 'verbose':
+        case 'dont_ask':
+        case 'do_ask':
+            break;
+        default:
+            fail("unexpected argument: $kw");
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// output options -> qpdf arguments
+
+function write_args($opts, $formFilled = false)
+{
+    $a = array();
+    if ($opts['flatten']) {
+        $a[] = '--generate-appearances';
+        $a[] = '--flatten-annotations=all';
+    } elseif ($formFilled && !$opts['need_appearances']) {
+        $a[] = '--generate-appearances';
+    }
+    if ($opts['uncompress']) {
+        $a[] = '--stream-data=uncompress';
+        $a[] = '--object-streams=disable';
+    } elseif ($opts['compress']) {
+        $a[] = '--stream-data=compress';
+    }
+    return array_merge($a, encrypt_args($opts));
+}
+
+function encrypt_args($opts)
+{
+    $enc = $opts['encrypt'];
+    if ($enc === null && ($opts['owner_pw'] !== null || $opts['user_pw'] !== null)) {
+        $enc = '128bit';
+    }
+    if ($enc === null) {
+        // pdftk writes unencrypted output unless asked; qpdf would keep the input's encryption
+        return array('--decrypt');
+    }
+    $owner = (string) $opts['owner_pw'];
+    $user = (string) $opts['user_pw'];
+    $allow = array_flip($opts['allow']);
+    $all = isset($allow['allfeatures']);
+    $has = function ($perm) use ($allow, $all) {
+        return $all || isset($allow[$perm]);
+    };
+    $yn = function ($b) {
+        return $b ? 'y' : 'n';
+    };
+    $a = array();
+    if ($enc === '40bit') {
+        $a[] = '--allow-weak-crypto';
+    }
+    // an empty owner password is fine for 40/128 bit (qpdf's --allow-insecure is for 256 bit only)
+    $a = array_merge($a, array('--encrypt', $user, $owner, $enc === '40bit' ? '40' : '128'));
+    if ($enc === '40bit') {
+        $a[] = '--print=' . $yn($has('printing') || $has('degradedprinting'));
+        $a[] = '--modify=' . $yn($has('modifycontents') || $has('assembly'));
+        $a[] = '--extract=' . $yn($has('copycontents') || $has('screenreaders'));
+        $a[] = '--annotate=' . $yn($has('modifyannotations') || $has('fillin'));
+    } else {
+        // pdftk's encrypt_128bit is RC4, which qpdf refuses as weak crypto; AES-128 is the
+        // same key length and every reader since Acrobat 7 opens it
+        $a[] = '--use-aes=y';
+        $a[] = '--print=' . ($has('printing') ? 'full' : ($has('degradedprinting') ? 'low' : 'none'));
+        $a[] = '--modify-other=' . $yn($has('modifycontents'));
+        $a[] = '--assemble=' . $yn($has('assembly'));
+        // no --accessibility: qpdf ignores it for AES (R4+), screen readers are always allowed there
+        $a[] = '--extract=' . $yn($has('copycontents'));
+        $a[] = '--annotate=' . $yn($has('modifyannotations'));
+        $a[] = '--form=' . $yn($has('fillin') || $has('modifyannotations'));
+    }
+    $a[] = '--';
+    return $a;
+}
+
+function need_output($opts)
+{
+    if ($opts['output'] === null) {
+        fail('no output file given (use "output <file>" or "output -" for stdout)');
+    }
+    return $opts['output'];
+}
+
+// ---------------------------------------------------------------------------------------------
+// page ranges: [handle][begin[-end]][even|odd][rotation][~exclusion...]
+
+function parse_range($tok, $inputs, $handles)
+{
+    $parts = explode('~', $tok);
+    $re = '/^([A-Z]*)((?:r?\d+|r?end)(?:-(?:r?\d+|r?end))?)?(even|odd)?(north|south|east|west|left|right|down)?$/';
+    if (!preg_match($re, $parts[0], $m)) {
+        fail("invalid page range: $tok");
+    }
+    $idx = 0;
+    if ($m[1] !== '') {
+        if (!isset($handles[$m[1]])) {
+            fail("unknown input handle in page range: $tok");
+        }
+        $idx = $handles[$m[1]];
+    }
+    $count = npages($inputs[$idx]);
+    $pages = expand_pages(isset($m[2]) ? $m[2] : '', $count, $tok);
+    if (!empty($m[3])) {
+        $want = $m[3] === 'even' ? 0 : 1;
+        $pages = array_values(array_filter($pages, function ($p) use ($want) {
+            return $p % 2 === $want;
+        }));
+    }
+    for ($k = 1; $k < count($parts); $k++) {
+        $pages = array_values(array_diff($pages, expand_pages($parts[$k], $count, $tok)));
+    }
+    $rotations = array(
+        'north' => '0', 'east' => '90', 'south' => '180', 'west' => '270',
+        'left' => '-90', 'right' => '+90', 'down' => '+180',
+    );
+    $rot = empty($m[4]) ? null : $rotations[$m[4]];
+    $items = array();
+    foreach ($pages as $p) {
+        $items[] = array($idx, $p, $rot);
+    }
+    return $items;
+}
+
+function expand_pages($spec, $count, $tok)
+{
+    if ($spec === '') {
+        return $count ? range(1, $count) : array();
+    }
+    $ends = explode('-', $spec);
+    $nums = array();
+    foreach ($ends as $e) {
+        $rev = substr($e, 0, 1) === 'r';
+        $v = ltrim($e, 'r');
+        $v = $v === 'end' ? $count : (int) $v;
+        if ($rev) {
+            $v = $count - $v + 1;
+        }
+        if ($v < 1 || $v > $count) {
+            fail("page range $tok is outside the document (1-$count)");
+        }
+        $nums[] = $v;
+    }
+    return count($nums) === 1 ? $nums : range($nums[0], $nums[1]);
+}
+
+function range_items($opArgs, $inputs, $handles, $allIfEmpty)
+{
+    if (!$opArgs && $allIfEmpty) {
+        $items = array();
+        foreach ($inputs as $idx => $in) {
+            foreach (expand_pages('', npages($in), '') as $p) {
+                $items[] = array($idx, $p, null);
+            }
+        }
+        return $items;
+    }
+    $items = array();
+    foreach ($opArgs as $tok) {
+        $items = array_merge($items, parse_range($tok, $inputs, $handles));
+    }
+    return $items;
+}
+
+// --rotate arguments for a list of (page number => rotation) pairs
+function rotate_args($rots)
+{
+    $byRot = array();
+    foreach ($rots as $page => $rot) {
+        if ($rot !== null) {
+            $byRot[$rot][] = $page;
+        }
+    }
+    $a = array();
+    foreach ($byRot as $rot => $pages) {
+        $a[] = '--rotate=' . $rot . ':' . implode(',', $pages);
+    }
+    return $a;
+}
+
+// writes the given (input index, page, rotation) items, in order, to $out
+function write_pages($items, $inputs, $opts, $out)
+{
+    if (!$items) {
+        fail('no pages selected');
+    }
+    $args = array_merge(array($inputs[0]['path']), pw_args($inputs[0]), array('--pages'));
+    $rots = array();
+    $group = null;
+    $pages = array();
+    foreach ($items as $k => $item) {
+        if ($group !== $item[0] && $pages) {
+            $args = array_merge($args, array($inputs[$group]['path']), pw_args($inputs[$group]), array(implode(',', $pages)));
+            $pages = array();
+        }
+        $group = $item[0];
+        $pages[] = $item[1];
+        $rots[$k + 1] = $item[2];
+    }
+    $args = array_merge($args, array($inputs[$group]['path']), pw_args($inputs[$group]), array(implode(',', $pages), '--'));
+    qpdf_run(array_merge($args, rotate_args($rots), write_args($opts), array($out)));
+}
+
+// ---------------------------------------------------------------------------------------------
+// operations
+
+function op_cat($inputs, $handles, $opArgs, $opts)
+{
+    write_pages(range_items($opArgs, $inputs, $handles, true), $inputs, $opts, need_output($opts));
+}
+
+function op_shuffle($inputs, $handles, $opArgs, $opts)
+{
+    $lists = array();
+    if (!$opArgs) {
+        foreach ($inputs as $idx => $in) {
+            $lists[] = range_items(array(), array($in), array(), true);
+            foreach ($lists[count($lists) - 1] as $k => $item) {
+                $lists[count($lists) - 1][$k][0] = $idx;
+            }
+        }
+    } else {
+        foreach ($opArgs as $tok) {
+            $lists[] = parse_range($tok, $inputs, $handles);
+        }
+    }
+    $items = array();
+    for ($k = 0; ; $k++) {
+        $added = false;
+        foreach ($lists as $list) {
+            if (isset($list[$k])) {
+                $items[] = $list[$k];
+                $added = true;
+            }
+        }
+        if (!$added) {
+            break;
+        }
+    }
+    write_pages($items, $inputs, $opts, need_output($opts));
+}
+
+function op_burst($inputs, $opts)
+{
+    $in = $inputs[0];
+    $pattern = $opts['output'] === null ? 'pg_%04d.pdf' : $opts['output'];
+    for ($p = 1, $count = npages($in); $p <= $count; $p++) {
+        qpdf_run(array_merge(
+            array($in['path']), pw_args($in), array('--pages', $in['path']), pw_args($in), array((string) $p, '--'),
+            write_args($opts), array(sprintf($pattern, $p))
+        ));
+    }
+}
+
+function op_rotate($inputs, $handles, $opArgs, $opts)
+{
+    $rots = array();
+    foreach (range_items($opArgs, $inputs, $handles, false) as $item) {
+        $rots[$item[1]] = $item[2];
+    }
+    $in = $inputs[0];
+    qpdf_run(array_merge(array($in['path']), pw_args($in), rotate_args($rots), write_args($opts), array(need_output($opts))));
+}
+
+function op_overlay($op, $inputs, $opArgs, $opts)
+{
+    if (count($opArgs) !== 1) {
+        fail("$op expects exactly one PDF argument");
+    }
+    $file = $opArgs[0] === '-' ? stdin_to_tmp() : $opArgs[0];
+    if (!is_file($file)) {
+        fail("Unable to find file: $file");
+    }
+    $kind = strpos($op, 'stamp') !== false ? '--overlay' : '--underlay';
+    // stamp/background: page 1 on every page; multi*: page n on page n, last one repeated
+    $sel = strpos($op, 'multi') === 0 ? array('--repeat=z') : array('--from=', '--repeat=1');
+    $in = $inputs[0];
+    qpdf_run(array_merge(
+        array($in['path']), pw_args($in), array($kind, $file), $sel, array('--'),
+        write_args($opts), array(need_output($opts))
+    ));
+}
+
+function op_dump_data($in, $utf8, $opts)
+{
+    $j = q_json($in, array('pages', 'outlines', 'qpdf'));
+    $objs = $j->qpdf[1];
+    $trailer = $objs->trailer->value;
+    $out = '';
+    $info = dict_get($objs, $trailer, '/Info');
+    if (is_object($info)) {
+        foreach ($info as $key => $v) {
+            $text = json_text(resolve($objs, $v));
+            if ($text === null) {
+                continue;
+            }
+            $out .= "InfoBegin\nInfoKey: " . out_text(name_decode(substr($key, 1)), $utf8) . "\n"
+                . 'InfoValue: ' . out_text(str_replace(array("\r\n", "\r", "\n"), ' ', $text), $utf8) . "\n";
+        }
+    }
+    $id = dict_get($objs, $trailer, '/ID');
+    if (is_array($id) && count($id) === 2) {
+        foreach ($id as $k => $v) {
+            $v = (string) $v;
+            $hex = substr($v, 0, 2) === 'b:' ? substr($v, 2) : bin2hex(substr($v, 2));
+            $out .= "PdfID$k: $hex\n";
+        }
+    }
+    $out .= 'NumberOfPages: ' . count($j->pages) . "\n";
+    $out .= dump_bookmarks($j->outlines, 1, $utf8);
+    foreach ($j->pages as $k => $page) {
+        $rect = array_map('num', array_map(function ($v) use ($objs) {
+            return resolve($objs, $v);
+        }, (array) inherited($objs, $page->object, '/MediaBox', array(0, 0, 612, 792))));
+        $out .= "PageMediaBegin\nPageMediaNumber: " . ($k + 1) . "\n"
+            . 'PageMediaRotation: ' . (((int) inherited($objs, $page->object, '/Rotate', 0) % 360 + 360) % 360) . "\n"
+            . 'PageMediaRect: ' . implode(' ', $rect) . "\n"
+            . 'PageMediaDimensions: ' . num($rect[2] - $rect[0]) . ' ' . num($rect[3] - $rect[1]) . "\n";
+    }
+    write_text($out, $opts['output']);
+}
+
+function dump_bookmarks($outlines, $level, $utf8)
+{
+    $out = '';
+    foreach ($outlines as $o) {
+        $out .= "BookmarkBegin\nBookmarkTitle: " . out_text($o->title, $utf8) . "\nBookmarkLevel: $level\n"
+            . 'BookmarkPageNumber: ' . (int) $o->destpageposfrom1 . "\n"
+            . dump_bookmarks($o->kids, $level + 1, $utf8);
+    }
+    return $out;
+}
+
+// page attribute lookup following the /Parent chain (MediaBox and Rotate are inheritable)
+function inherited($objs, $ref, $key, $default)
+{
+    for ($guard = 0; $ref !== null && $guard < 64; $guard++) {
+        $dict = obj_value($objs, $ref);
+        $v = dict_get($objs, $dict, $key);
+        if ($v !== null) {
+            return $v;
+        }
+        $ref = (is_object($dict) && isset($dict->{'/Parent'})) ? $dict->{'/Parent'} : null;
+    }
+    return $default;
+}
+
+// the terminal field dictionary for a widget: kid widgets without /T belong to their parent
+function field_ref($objs, $f)
+{
+    $ref = $f->object;
+    $dict = obj_value($objs, $ref);
+    while (is_object($dict) && !isset($dict->{'/T'}) && isset($dict->{'/Parent'})) {
+        $ref = $dict->{'/Parent'};
+        $dict = obj_value($objs, $ref);
+    }
+    return $ref;
+}
+
+function widget_states($objs, $widgetRef)
+{
+    $n = dict_get($objs, dict_get($objs, obj_value($objs, $widgetRef), '/AP'), '/N');
+    $states = array();
+    if (is_object($n)) {
+        foreach ($n as $k => $v) {
+            $states[] = $k;
+        }
+    }
+    return $states;
+}
+
+// acroform fields grouped per terminal field, in document order
+function form_fields($j)
+{
+    $objs = $j->qpdf[1];
+    $fields = array();
+    foreach ($j->acroform->fields as $f) {
+        $ref = field_ref($objs, $f);
+        if (!isset($fields[$ref])) {
+            $fields[$ref] = array('info' => $f, 'ref' => $ref, 'widgets' => array());
+        }
+        $fields[$ref]['widgets'][] = $f->annotation->object;
+    }
+    return $fields;
+}
+
+function op_dump_data_fields($in, $utf8, $opts)
+{
+    $j = q_json($in, array('acroform', 'qpdf'));
+    $objs = $j->qpdf[1];
+    $types = array('/Tx' => 'Text', '/Btn' => 'Button', '/Ch' => 'Choice', '/Sig' => 'Signature');
+    $justify = array('Left', 'Center', 'Right');
+    $out = '';
+    foreach (form_fields($j) as $field) {
+        $f = $field['info'];
+        $dict = obj_value($objs, $field['ref']);
+        $out .= "---\nFieldType: " . (isset($types[$f->fieldtype]) ? $types[$f->fieldtype] : ltrim($f->fieldtype, '/')) . "\n"
+            . 'FieldName: ' . out_text($f->fullname, $utf8) . "\n";
+        if (isset($dict->{'/TU'})) {
+            $out .= 'FieldNameAlt: ' . out_text($f->alternativename, $utf8) . "\n";
+        }
+        $out .= 'FieldFlags: ' . (int) $f->fieldflags . "\n";
+        $values = is_array($f->value) ? $f->value : ($f->value === null ? array() : array($f->value));
+        foreach ($values as $v) {
+            $text = json_text($v);
+            if ($text !== null && $text !== '') {
+                $out .= 'FieldValue: ' . out_text($text, $utf8) . "\n";
+            }
+        }
+        $out .= 'FieldJustification: ' . (isset($justify[$f->quadding]) ? $justify[$f->quadding] : 'Left') . "\n";
+        $maxLen = dict_get($objs, $dict, '/MaxLen');
+        if ($maxLen !== null) {
+            $out .= 'FieldMaxLength: ' . (int) $maxLen . "\n";
+        }
+        $options = array();
+        if ($f->fieldtype === '/Btn') {
+            foreach ($field['widgets'] as $w) {
+                foreach (widget_states($objs, $w) as $s) {
+                    $options[] = name_decode(substr($s, 1));
+                }
+            }
+        } else {
+            $options = $f->choices;
+        }
+        foreach (array_unique($options) as $o) {
+            $out .= 'FieldStateOption: ' . out_text($o, $utf8) . "\n";
+        }
+    }
+    write_text($out, $opts['output']);
+}
+
+// ---------------------------------------------------------------------------------------------
+// form data (FDF / XFDF) -> array(full field name => string or list of strings)
+
+function read_form_data($file)
+{
+    $data = $file === '-' ? file_get_contents('php://stdin') : @file_get_contents($file);
+    if ($data === false) {
+        fail("Unable to read form data file: $file");
+    }
+    if (preg_match('/^\s*(<\?xml|<xfdf)/', $data)) {
+        return read_xfdf($data);
+    }
+    return read_fdf($data);
+}
+
+function read_xfdf($data)
+{
+    $doc = new DOMDocument();
+    if (!@$doc->loadXML($data)) {
+        fail('could not parse XFDF form data');
+    }
+    $values = array();
+    foreach ($doc->getElementsByTagName('fields') as $fields) {
+        xfdf_fields($fields, '', $values);
+    }
+    return $values;
+}
+
+function xfdf_fields($node, $prefix, &$values)
+{
+    foreach ($node->childNodes as $field) {
+        if (!($field instanceof DOMElement) || $field->localName !== 'field') {
+            continue;
+        }
+        $name = $prefix . $field->getAttribute('name');
+        $vals = array();
+        foreach ($field->childNodes as $child) {
+            if ($child instanceof DOMElement && $child->localName === 'value') {
+                $vals[] = $child->textContent;
+            }
+        }
+        if ($vals) {
+            $values[$name] = count($vals) === 1 ? $vals[0] : $vals;
+        }
+        xfdf_fields($field, $name . '.', $values);
+    }
+}
+
+function read_fdf($data)
+{
+    $objs = array();
+    if (preg_match_all('/(\d+)\s+(\d+)\s+obj\b/', $data, $m, PREG_OFFSET_CAPTURE)) {
+        foreach ($m[0] as $k => $match) {
+            $pos = $match[1] + strlen($match[0]);
+            $objs[$m[1][$k][0] . ' ' . $m[2][$k][0] . ' R'] = pdf_parse($data, $pos);
+        }
+    }
+    $values = array();
+    foreach ($objs as $o) {
+        if ($o instanceof stdClass && isset($o->FDF)) {
+            $fdf = fdf_resolve($objs, $o->FDF);
+            fdf_fields($objs, fdf_resolve($objs, isset($fdf->Fields) ? $fdf->Fields : array()), '', $values);
+            return $values;
+        }
+    }
+    fail('could not find /FDF dictionary in form data');
+}
+
+function fdf_resolve($objs, $v)
+{
+    return (is_array($v) && isset($v['ref'])) ? (isset($objs[$v['ref']]) ? $objs[$v['ref']] : null) : $v;
+}
+
+function fdf_fields($objs, $fields, $prefix, &$values)
+{
+    foreach ((array) $fields as $field) {
+        $field = fdf_resolve($objs, $field);
+        if (!($field instanceof stdClass) || !isset($field->T)) {
+            continue;
+        }
+        $name = $prefix . pdf_text($field->T);
+        if (isset($field->V)) {
+            $v = fdf_resolve($objs, $field->V);
+            $isList = is_array($v) && !isset($v['ref']) && !isset($v['s']) && !isset($v['n']);
+            $values[$name] = $isList ? array_map('pdf_text', $v) : pdf_text($v);
+        }
+        if (isset($field->Kids)) {
+            fdf_fields($objs, fdf_resolve($objs, $field->Kids), $name . '.', $values);
+        }
+    }
+}
+
+// minimal PDF object syntax parser: dicts -> stdClass, arrays -> list, refs -> array('ref' => ..),
+// strings and names -> array('s' => bytes) / array('n' => name), everything else -> string token
+function pdf_parse($s, &$i)
+{
+    $len = strlen($s);
+    while ($i < $len) {
+        if (ctype_space($s[$i])) {
+            $i++;
+        } elseif ($s[$i] === '%') {
+            while ($i < $len && $s[$i] !== "\n" && $s[$i] !== "\r") {
+                $i++;
+            }
+        } else {
+            break;
+        }
+    }
+    if ($i >= $len) {
+        return null;
+    }
+    $c = $s[$i];
+    if ($c === '<' && substr($s, $i, 2) === '<<') {
+        $i += 2;
+        $dict = new stdClass();
+        while (true) {
+            $key = pdf_parse($s, $i);
+            if ($key === '>>' || $key === null) {
+                return $dict;
+            }
+            $dict->{is_array($key) && isset($key['n']) ? $key['n'] : (string) $key} = pdf_parse($s, $i);
+        }
+    }
+    if ($c === '<') {
+        $end = strpos($s, '>', $i);
+        $hex = preg_replace('/[^0-9A-Fa-f]/', '', substr($s, $i + 1, $end - $i - 1));
+        $i = $end + 1;
+        return array('s' => hex2bin(strlen($hex) % 2 ? $hex . '0' : $hex));
+    }
+    if ($c === '>' && substr($s, $i, 2) === '>>') {
+        $i += 2;
+        return '>>';
+    }
+    if ($c === '[') {
+        $i++;
+        $arr = array();
+        while (($v = pdf_parse($s, $i)) !== ']' && $v !== null) {
+            $arr[] = $v;
+        }
+        return $arr;
+    }
+    if ($c === ']') {
+        $i++;
+        return ']';
+    }
+    if ($c === '(') {
+        return array('s' => pdf_literal($s, $i));
+    }
+    if ($c === '/') {
+        preg_match('/\/([^\s\/\[\]<>(){}%]*)/A', $s, $m, 0, $i);
+        $i += strlen($m[0]);
+        return array('n' => name_decode($m[1]));
+    }
+    preg_match('/[^\s\/\[\]<>(){}%]+/A', $s, $m, 0, $i);
+    $i += strlen($m[0]);
+    if (preg_match('/^\d+$/', $m[0]) && preg_match('/\s*(\d+)\s+R\b/A', $s, $r, 0, $i)) {
+        $i += strlen($r[0]);
+        return array('ref' => $m[0] . ' ' . $r[1] . ' R');
+    }
+    return $m[0];
+}
+
+function pdf_literal($s, &$i)
+{
+    $i++;
+    $depth = 1;
+    $out = '';
+    $esc = array('n' => "\n", 'r' => "\r", 't' => "\t", 'b' => "\x08", 'f' => "\x0C");
+    for ($len = strlen($s); $i < $len; $i++) {
+        $c = $s[$i];
+        if ($c === '\\') {
+            $c = $s[++$i];
+            if (isset($esc[$c])) {
+                $out .= $esc[$c];
+            } elseif (ctype_digit($c) && $c < '8') {
+                preg_match('/[0-7]{1,3}/A', $s, $m, 0, $i);
+                $out .= chr(octdec($m[0]) & 0xFF);
+                $i += strlen($m[0]) - 1;
+            } elseif ($c === "\r") {
+                if (isset($s[$i + 1]) && $s[$i + 1] === "\n") {
+                    $i++;
+                }
+            } elseif ($c !== "\n") {
+                $out .= $c;
+            }
+        } elseif ($c === '(') {
+            $depth++;
+            $out .= $c;
+        } elseif ($c === ')') {
+            if (--$depth === 0) {
+                $i++;
+                return $out;
+            }
+            $out .= $c;
+        } else {
+            $out .= $c;
+        }
+    }
+    return $out;
+}
+
+function pdf_text($v)
+{
+    if (is_array($v) && isset($v['s'])) {
+        return bytes_to_utf8($v['s']);
+    }
+    if (is_array($v) && isset($v['n'])) {
+        return $v['n'];
+    }
+    return is_scalar($v) ? (string) $v : '';
+}
+
+// ---------------------------------------------------------------------------------------------
+// fill_form / update_info: modify objects through qpdf --update-from-json
+
+function update_json($j, $changed)
+{
+    $objects = new stdClass();
+    foreach ($changed as $key => $value) {
+        $objects->$key = (object) array('value' => $value);
+    }
+    $path = tmp_path();
+    file_put_contents($path, json_encode((object) array('qpdf' => array($j->qpdf[0], $objects))));
+    return $path;
+}
+
+function op_fill_form($in, $opArgs, $opts)
+{
+    if (count($opArgs) !== 1) {
+        fail('fill_form expects exactly one FDF or XFDF file argument');
+    }
+    $values = read_form_data($opArgs[0]);
+    $j = q_json($in, array('acroform', 'qpdf'));
+    $objs = $j->qpdf[1];
+    $changed = array();
+    $get = function ($ref) use ($objs, &$changed) {
+        $k = 'obj:' . $ref;
+        if (!isset($changed[$k])) {
+            $changed[$k] = clone obj_value($objs, $ref);
+        }
+        return $changed[$k];
+    };
+
+    foreach (form_fields($j) as $field) {
+        $f = $field['info'];
+        if (!array_key_exists($f->fullname, $values)) {
+            continue;
+        }
+        $value = $values[$f->fullname];
+        if ($f->fieldtype === '/Btn') {
+            if ($f->fieldflags & 65536) {
+                continue; // push button
+            }
+            $value = (string) (is_array($value) ? reset($value) : $value);
+            $state = '/Off';
+            foreach ($field['widgets'] as $w) {
+                foreach (widget_states($objs, $w) as $s) {
+                    if ($s !== '/Off' && name_decode(substr($s, 1)) === $value) {
+                        $state = $s;
+                    }
+                }
+            }
+            if ($state === '/Off' && $value !== '' && $value !== 'Off') {
+                fwrite(STDERR, "Warning: value '$value' is not a valid state of field {$f->fullname}, set to Off\n");
+            }
+            $get($field['ref'])->{'/V'} = $state;
+            foreach ($field['widgets'] as $w) {
+                $get($w)->{'/AS'} = in_array($state, widget_states($objs, $w), true) ? $state : '/Off';
+            }
+        } elseif ($f->fieldtype === '/Tx' || $f->fieldtype === '/Ch') {
+            $get($field['ref'])->{'/V'} = is_array($value)
+                ? array_map(function ($v) {
+                    return 'u:' . $v;
+                }, $value)
+                : 'u:' . $value;
+        }
+    }
+
+    // ask for appearance regeneration, and drop XFA so viewers don't show the stale XFA data
+    $catalogRef = $objs->trailer->value->{'/Root'};
+    $acroRef = obj_value($objs, $catalogRef)->{'/AcroForm'};
+    $acro = is_ref($acroRef) ? $get($acroRef) : $get($catalogRef)->{'/AcroForm'};
+    $acro->{'/NeedAppearances'} = true;
+    unset($acro->{'/XFA'});
+
+    $upd = update_json($j, $changed);
+    qpdf_run(array_merge(
+        array($in['path']), pw_args($in), array('--update-from-json=' . $upd),
+        write_args($opts, true), array(need_output($opts))
+    ));
+}
+
+function op_update_info($in, $opArgs, $utf8, $opts)
+{
+    if (count($opArgs) !== 1) {
+        fail('update_info expects exactly one info file argument');
+    }
+    $data = $opArgs[0] === '-' ? file_get_contents('php://stdin') : @file_get_contents($opArgs[0]);
+    if ($data === false) {
+        fail("Unable to read info file: {$opArgs[0]}");
+    }
+    $info = array();
+    $key = null;
+    $skipped = false;
+    foreach (preg_split('/\r\n|\r|\n/', $data) as $line) {
+        if (preg_match('/^InfoKey:\s?(.*)$/', $line, $m)) {
+            $key = $m[1];
+        } elseif ($key !== null && preg_match('/^InfoValue:\s?(.*)$/', $line, $m)) {
+            $info[$key] = $utf8 ? $m[1] : html_entity_decode($m[1], ENT_QUOTES, 'UTF-8');
+            $key = null;
+        } elseif (!$skipped && preg_match('/^(Bookmark|PageLabel)/', $line)) {
+            fwrite(STDERR, "Warning: bookmark and page label records are not supported by this pdftk shim, ignored\n");
+            $skipped = true;
+        }
+    }
+
+    $j = q_json($in, array('qpdf'));
+    $objs = $j->qpdf[1];
+    $trailer = clone $objs->trailer->value;
+    $changed = array();
+    if (isset($trailer->{'/Info'}) && is_ref($trailer->{'/Info'})) {
+        $infoKey = 'obj:' . $trailer->{'/Info'};
+        $dict = clone obj_value($objs, $trailer->{'/Info'});
+    } else {
+        $ref = ($j->qpdf[0]->maxobjectid + 1) . ' 0 R';
+        $infoKey = 'obj:' . $ref;
+        $dict = isset($trailer->{'/Info'}) ? clone $trailer->{'/Info'} : new stdClass();
+        $trailer->{'/Info'} = $ref;
+        $changed['trailer'] = $trailer;
+    }
+    foreach ($info as $k => $v) {
+        $name = '/' . preg_replace_callback('/[^!-~]|[#\/\[\]<>(){}%]/', function ($m) {
+            return sprintf('#%02X', ord($m[0]));
+        }, $k);
+        if ($v === '') {
+            unset($dict->$name);
+        } else {
+            $dict->$name = 'u:' . $v;
+        }
+    }
+    $changed[$infoKey] = $dict;
+
+    $upd = update_json($j, $changed);
+    qpdf_run(array_merge(
+        array($in['path']), pw_args($in), array('--update-from-json=' . $upd),
+        write_args($opts), array(need_output($opts))
+    ));
+}
+
+// ---------------------------------------------------------------------------------------------
+
+switch ($op) {
+    case 'cat':
+        op_cat($inputs, $handles, $opArgs, $opts);
+        break;
+    case 'shuffle':
+        op_shuffle($inputs, $handles, $opArgs, $opts);
+        break;
+    case 'burst':
+        op_burst($inputs, $opts);
+        break;
+    case 'rotate':
+        op_rotate($inputs, $handles, $opArgs, $opts);
+        break;
+    case 'stamp':
+    case 'multistamp':
+    case 'background':
+    case 'multibackground':
+        op_overlay($op, $inputs, $opArgs, $opts);
+        break;
+    case 'dump_data':
+    case 'dump_data_utf8':
+        op_dump_data($inputs[0], $op === 'dump_data_utf8', $opts);
+        break;
+    case 'dump_data_fields':
+    case 'dump_data_fields_utf8':
+        op_dump_data_fields($inputs[0], $op === 'dump_data_fields_utf8', $opts);
+        break;
+    case 'fill_form':
+        op_fill_form($inputs[0], $opArgs, $opts);
+        break;
+    case 'update_info':
+    case 'update_info_utf8':
+        op_update_info($inputs[0], $opArgs, $op === 'update_info_utf8', $opts);
+        break;
+    default:
+        fail("operation $op is not supported by this pdftk shim (qpdf based, no Java)");
+}

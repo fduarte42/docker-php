@@ -54,6 +54,9 @@ RUN --mount=type=bind,from=valkey-glide-builder,source=/out,target=/tmp/valkey-g
     bash /build.sh && rm /build.sh
 
 # post-build
+# pdftk compatibility shim on top of qpdf (no java)
+COPY scripts/pdftk /usr/local/bin/pdftk
+RUN chmod 755 /usr/local/bin/pdftk
 COPY scripts/cron-foreground /usr/local/bin/cron-foreground
 RUN chmod 700 /usr/local/bin/cron-foreground
 COPY scripts/docker-php-init /docker-php-init
