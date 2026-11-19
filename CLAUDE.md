@@ -5,8 +5,10 @@ flavors. **There is no application code and no `composer.json` here** — the de
 Published to `ghcr.io/fduarte42/docker-php` and `docker.io/fduarte42/docker-php`.
 
 ## What this repo is
-- Base image: `debian:trixie-slim`. PHP comes from the sury.org APT repo (currently via the
-  `mirrors.dotsrc.org/deb.sury.org` mirror — the direct source was down, see commit `f719207`).
+- Base image: `debian:trixie-slim`. PHP comes from the sury.org APT repo, directly from `packages.sury.org`.
+  The `mirrors.dotsrc.org/deb.sury.org` mirror was used while the direct source was down (`f719207`) and
+  dropped again because it lags sury releases: on the 8.5.13 release day its index listed packages whose
+  `.deb`s still 404'd, failing every amd64 job that apt-installed anything from sury (run `44567900251`).
 - Process manager is **supervisord**, not systemd; it runs apache2, php-fpm, cron, rsyslog and the
   one-shot `docker-php-init`.
 - Platforms: `linux/amd64,linux/arm64` by default. Arch-specific handling is done via `$TARGETARCH`
@@ -142,7 +144,7 @@ yet the CI matrix still schedules that job.
     `glide_bindings.h`, so the C compile fails with "incomplete type" errors instead of anything obvious.
   - The rustup pin must satisfy glide's locked AWS SDK crates (≥1.91.1 as of extension 1.1.2); 1.90 is
     rejected outright by cargo.
-  - The builder stage must install PHP from the **same** sury mirror as `build.sh`, otherwise the `.so`
+  - The builder stage must install PHP from the **same** sury source as `build.sh`, otherwise the `.so`
     can miss the final image's Zend ABI. The `php -m | grep -qx valkey_glide` gate in `build.sh` is what
     catches that — keep it.
   - The install side in `build.sh`/`build-slim.sh` resolves the target directory with

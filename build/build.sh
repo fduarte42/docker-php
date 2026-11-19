@@ -12,12 +12,8 @@ apt-get -y install apt-transport-https lsb-release ca-certificates curl gnupg
 mkdir -p /etc/apt/keyrings
 
 # Add php APT repo
-#curl -fsSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /usr/share/keyrings/deb.sury.org.gpg
-#echo "deb [signed-by=/usr/share/keyrings/deb.sury.org.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php.list
-
-# Add node APT repo (mirror)
-curl -fsSL https://mirrors.dotsrc.org/deb.sury.org/php/apt.gpg | gpg --dearmor -o /usr/share/keyrings/deb.sury.org.gpg
-echo "deb [signed-by=/usr/share/keyrings/deb.sury.org.gpg] https://mirrors.dotsrc.org/deb.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php.list
+curl -fsSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /usr/share/keyrings/deb.sury.org.gpg
+echo "deb [signed-by=/usr/share/keyrings/deb.sury.org.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php.list
 
 # Add node APT repo
 curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg

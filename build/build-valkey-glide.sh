@@ -23,12 +23,12 @@ PIE_VERSION=1.4.10
 PIE_SHA256=b88792235c8e80be568436d4cb043b49fd1869c89b64e83d23e2882ae19d70a8
 CBINDGEN_VERSION=0.29.4
 
-# php APT repo (mirror) - must be the same source as build.sh so the .so matches the final image's
+# php APT repo - must be the same source as build.sh so the .so matches the final image's
 # php build. node/yarn/contrib are not needed here.
 apt-get update
 apt-get install -y apt-transport-https lsb-release ca-certificates curl gnupg
-curl -fsSL https://mirrors.dotsrc.org/deb.sury.org/php/apt.gpg | gpg --dearmor -o /usr/share/keyrings/deb.sury.org.gpg
-echo "deb [signed-by=/usr/share/keyrings/deb.sury.org.gpg] https://mirrors.dotsrc.org/deb.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php.list
+curl -fsSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /usr/share/keyrings/deb.sury.org.gpg
+echo "deb [signed-by=/usr/share/keyrings/deb.sury.org.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php.list
 apt-get update
 
 # php to run pie.phar with (curl/mbstring/xml/zip are what it needs to fetch and unpack the release)
