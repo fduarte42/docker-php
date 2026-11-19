@@ -117,12 +117,14 @@ yet the CI matrix still schedules that job.
 - PHP config goes in `/etc/php/${PHP_VERSION}/mods-available/<name>.ini` followed by `phpenmod <name>` —
   never edit `php.ini` in place.
 - Version-specific package differences use the `[[ $PHP_VERSION =~ (…) ]]` branch idiom already in `build.sh`.
-  PHP 8.5 has no sury builds for memcached/raphf/http — those are compiled with `pecl` and the build deps
-  (`php8.5-dev`, `build-essential`, …) are purged again in the same step. Keep that purge.
-  Never call `pecl install <name>` / `pecl download` directly: pecl.php.net 404s the PEAR release metadata
-  (`allreleases2.xml`) and intermittently 500s on downloads (run `39619156205`). Resolve the version from
-  `rest/r/<pkg>/stable.txt`, fetch the tarball with `curl --retry 5 --retry-all-errors`, and `pecl install` the
-  local file — see `pecl_install` in `build.sh` and the oci8 download in `add-oci.sh`.
+  PHP 8.5 gets memcached/raphf/http from sury like 8.2–8.4, but has its own branch because opcache is built
+  into 8.5 (there is no `php8.5-opcache` package). Before sury packaged them they were compiled with `pecl`;
+  a brand-new PHP version will likely need that again until sury catches up. If so, install the build deps
+  (`php<ver>-dev`, `build-essential`, …) and purge them in the same step, and never call `pecl install <name>` /
+  `pecl download` directly: pecl.php.net 404s the PEAR release metadata (`allreleases2.xml`) and
+  intermittently 500s on downloads (run `39619156205`). Resolve the version from `rest/r/<pkg>/stable.txt`,
+  fetch the tarball with `curl --retry 5 --retry-all-errors`, and `pecl install` the local file — see the oci8
+  download in `add-oci.sh` (and the `pecl_install` helper removed from `build.sh` in git history).
 - `valkey_glide` has no sury package either: a pinned, sha256-verified `pie.phar` builds it from the
   upstream source release. Because it compiles glide's Rust FFI core, that happens in its own
   `valkey-glide-builder` stage (`build/build-valkey-glide.sh`), gated to 8.2–8.5, which sets up the sury

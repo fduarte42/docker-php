@@ -114,30 +114,12 @@ elif [[ $PHP_VERSION =~ (8\.2|8\.3|8\.4) ]]; then
     php${PHP_VERSION}-http \
     php${PHP_VERSION}-raphf
 elif [[ $PHP_VERSION =~ (8\.5) ]]; then
-    # pecl.php.net 404s the release metadata the PEAR client resolves versions from (allreleases2.xml)
-    # and intermittently 500s on downloads, so resolve the stable version and fetch the tarball with
-    # curl, then let pecl install it from the local file
-    pecl_install() {
-      local pkg=$1 ver
-      ver=$(curl -fsSL --retry 5 --retry-all-errors https://pecl.php.net/rest/r/${pkg}/stable.txt)
-      curl -fsSL --retry 5 --retry-all-errors -o /tmp/${pkg}.tgz https://pecl.php.net/get/${pkg}-${ver}.tgz
-      pecl install /tmp/${pkg}.tgz
-      rm /tmp/${pkg}.tgz
-    }
-    apt install -y libmemcached11
-    ldconfig
-    apt install -y php8.5-dev libcurl4-openssl-dev libmemcached-dev zlib1g-dev libicu-dev build-essential
-    pecl_install memcached
-    echo "extension=memcached.so" | sudo tee /etc/php/8.5/mods-available/memcached.ini
-    phpenmod memcached
-    pecl_install raphf
-    echo "extension=raphf.so" | sudo tee /etc/php/8.5/mods-available/raphf.ini
-    phpenmod raphf
-    pecl_install pecl_http
-    echo "extension=http.so"  | sudo tee /etc/php/8.5/mods-available/http.ini
-    phpenmod http
-    apt remove -y --purge php8.5-dev libcurl4-openssl-dev libmemcached-dev zlib1g-dev libicu-dev build-essential
- fi
+  # no opcache package - it is built into php 8.5
+  apt-get install -y \
+    php${PHP_VERSION}-memcached \
+    php${PHP_VERSION}-http \
+    php${PHP_VERSION}-raphf
+fi
 
 update-alternatives --set php /usr/bin/php${PHP_VERSION}
 
