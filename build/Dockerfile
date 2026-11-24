@@ -61,10 +61,14 @@ COPY scripts/cron-foreground /usr/local/bin/cron-foreground
 RUN chmod 700 /usr/local/bin/cron-foreground
 COPY scripts/docker-php-init /docker-php-init
 RUN chmod 755 /docker-php-init
+COPY scripts/docker-php-entrypoint /usr/local/bin/docker-php-entrypoint
+RUN chmod 755 /usr/local/bin/docker-php-entrypoint
 COPY config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 WORKDIR /var/www/html
 
 EXPOSE 80
 
+# remaps www-data to WWW_DATA_UID/WWW_DATA_GID (if set) before anything runs as www-data, then execs CMD
+ENTRYPOINT ["/usr/local/bin/docker-php-entrypoint"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
