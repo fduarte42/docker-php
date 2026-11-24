@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Remaps www-data to WWW_DATA_UID / WWW_DATA_GID (e.g. the host user's ids) before supervisord starts
+# anything, so files written to bind mounts get usable ownership. Without either variable it does nothing.
+set -e
+
+remap_www_data() {
+    local old_uid old_gid new_uid new_gid root_dev scope kind perms path default
+    old_uid=$(id -u www-data)
+    old_gid=$(id -g www-data)
+    new_uid=${WWW_DATA_UID:-$old_uid}
+    new_gid=${WWW_DATA_GID:-$old_gid}
+
+    if ! [[ $new_uid =~ ^[0-9]+$ && $new_gid =~ ^[0-9]+$ ]] || [[ $new_uid == 0 || $new_gid == 0 ]]; then
+        echo "docker-php-entrypoint: WWW_DATA_UID/WWW_DATA_GID must be numeric and non-zero, ignoring" >&2
+        return
+    fi
+    # already applied (container restart keeps the fs)
+    [[ $new_uid == "$old_uid" && $new_gid == "$old_gid" ]] && return
+
+    if [ "$(id -u)" != 0 ]; then
+        echo "docker-php-entrypoint: not running as root, cannot remap www-data" >&2
+        return
+    fi
+
+    echo "docker-php-entrypoint: remapping www-data ${old_uid}:${old_gid} -> ${new_uid}:${new_gid}"
+
+    # -xdev keeps this out of bind mounts and volumes, only the image's own files are re-owned
+    if [[ $new_uid != "$old_uid" ]]; then
+        find / -xdev -uid "$old_uid" -exec chown -h "$new_uid" {} +
+    fi
+    if [[ $new_gid != "$old_gid" ]]; then
+        find / -xdev -gid "$old_gid" -exec chgrp -h "$new_gid" {} +
+    fi
+
+    # ACL entries name ids numerically (setfacl -m u:33:rwX), so they'd keep granting the old id.
+    # Images built here carry none (the buildx layer export drops them), but derived images and other
+    # runtimes do. Only existing entries are moved, with their perms: adding one where there was none
+    # raises the ACL mask and loosens e.g. .gnupg (700). -xdev still lists mount points themselves, so
+    # anything not on the root fs is skipped explicitly to leave host ACLs alone.
+    root_dev=$(stat -c %d /)
+    while read -r scope kind perms path; do
+        # getfacl escapes whitespace/backslashes as \ooo octal
+        path=$(printf '%b' "$(sed 's/\\\([0-7]\{3\}\)/\\0\1/g' <<<"$path")")
+        [[ $(stat -c %d "$path") == "$root_dev" ]] || continue
+        [[ $scope == default ]] && default=-d || default=
+        if [[ $kind == user ]]; then
+            [[ $new_uid != "$old_uid" ]] || continue
+            setfacl $default -x "u:${old_uid}" -m "u:${new_uid}:${perms}" "$path"
+        else
+            [[ $new_gid != "$old_gid" ]] || continue
+            setfacl $default -x "g:${old_gid}" -m "g:${new_gid}:${perms}" "$path"
+        fi
+    done < <(
+        find / -xdev ! -type l -print0 | xargs -0 -r getfacl -s -n -p 2>/dev/null |
+            awk -v u="$old_uid" -v g="$old_gid" '
+                /^# file: / { path = substr($0, 9); next }
+                {
+                    split($1, f, ":"); scope = "access"
+                    if (f[1] == "default") { scope = "default"; f[1] = f[2]; f[2] = f[3]; f[3] = f[4] }
+                    if ((f[1] == "user" && f[2] == u) || (f[1] == "group" && f[2] == g))
+                        print scope, f[1], f[3], path
+                }'
+    )
+
+    # ids are switched last, so a run that fails above is retried on the next start instead of
+    # being taken as already applied.
+    # -o: the host's ids may already exist in the image (macOS users are gid 20 = dialout here)
+    if [[ $new_gid != "$old_gid" ]]; then
+        groupmod -o -g "$new_gid" www-data
+    fi
+    # not usermod -u: it chowns the home dir recursively, which would descend into a project
+    # bind-mounted at /var/www/html and rewrite files on the host
+    if [[ $new_uid != "$old_uid" ]]; then
+        sed -i "s/^www-data:\([^:]*\):${old_uid}:/www-data:\1:${new_uid}:/" /etc/passwd
+    fi
+}
+
+if [[ -n $WWW_DATA_UID || -n $WWW_DATA_GID ]]; then
+    remap_www_data
+fi
+
+exec "$@"

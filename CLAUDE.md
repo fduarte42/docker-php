@@ -74,7 +74,7 @@ yet the CI matrix still schedules that job.
 - `build/add-*.sh` — one per optional flavor: `add-debug.sh` (xdebug), `add-oci.sh` (Oracle Instant Client
   + pecl oci8), `add-sourceguardian.sh` (ixed loader), `add-chartdirector.sh`.
 - `build/config/` — `supervisord.conf`, `keyboard`.
-- `build/scripts/` — baked into the image: `docker-php-init`, `cron-foreground`, `php-fpm-reload.sh`, `.bashrc`,
+- `build/scripts/` — baked into the image: `docker-php-entrypoint`, `docker-php-init`, `cron-foreground`, `php-fpm-reload.sh`, `.bashrc`,
   `pdftk`.
 - `build/packages/`, `build/extension/`, `build/driver/oracle/` — **vendored third-party binaries committed to
   git** (patched wkhtmltox debs, ChartDirector, SourceGuardian loaders, Oracle Instant Client zips). Filenames
@@ -109,10 +109,25 @@ yet the CI matrix still schedules that job.
   `mods-available` and both cli/fpm `conf.d`) — for `docker-php` upstream compatibility. Keep it working.
 - `docker-php-init` runtime inputs: `SSH_AUTH_PORT` (socat-forwarded agent at `/tmp/ssh-agent.sock`), or a
   mounted `/ssh` dir with `id_*` keys; GPG material from `/gnupg/{gpg-key.asc,gpg-secret-key.asc,trust.txt}`.
+- `ENTRYPOINT` = `/usr/local/bin/docker-php-entrypoint` (`build/scripts/`), which `exec`s `CMD`. With
+  `WWW_DATA_UID` / `WWW_DATA_GID` set (e.g. `-e WWW_DATA_UID=$(id -u) -e WWW_DATA_GID=$(id -g)`) it remaps
+  www-data **before** supervisord starts — it can't live in `docker-php-init`, which supervisord runs in
+  parallel with php-fpm/apache/cron. It re-owns image files with `find / -xdev` and moves existing numeric
+  `user:33`/`group:33` ACL entries (access + default, perms kept) to the new ids — only where such an entry
+  already exists: adding one elsewhere raises the ACL mask and loosens `.gnupg` (700) / `.ssh`. Anything
+  not on the root fs (bind mounts, incl. their mount points) is skipped, so host files and host ACLs are
+  never touched. For the same reason the uid is changed by editing `/etc/passwd`, **not** `usermod -u`
+  (which chowns the home dir recursively, into a `/var/www/html` bind mount). Ids are switched last so the
+  remap is idempotent and a failed run retries on restart. Needs root; no-op under `--user` or a consumer
+  `ENTRYPOINT` override.
 - `cron-foreground` installs `/tmp/crontab` for `www-data` and dumps the env to `/etc/environment` so cron
   jobs see it.
-- `www-data` (uid 33) has ACLs on `/var/www` (`setfacl -R [-d] -m u:33:rwX`) and passwordless sudo for exactly
-  two commands: `/etc/init.d/apache2 reload` and `/usr/local/bin/php-fpm-reload.sh`.
+- `www-data` (uid 33) has passwordless sudo for exactly two commands: `/etc/init.d/apache2 reload` and
+  `/usr/local/bin/php-fpm-reload.sh`. `build.sh` also runs `setfacl -R [-d] -m u:33:rwX /var/www`, but the
+  buildx layer export drops ACL xattrs, so published images carry **no** ACLs (`/var/www` is plain
+  `root:root 775`). Consumers apply them at runtime instead — the docker-plugin project
+  (`src/utils/acl.rs`) runs `setfacl -R [-d] -m u:33:rwX /var/www` via
+  `docker exec` after `compose up`, with uid 33 hardcoded (`CONTAINER_WWW_DATA_UID`).
 - Globally installed via Composer in-image: `squizlabs/php_codesniffer`, `maglnet/composer-require-checker`
   (pinned to `3.8.0` on 7.4), `vimeo/psalm`. These are tools *for consuming projects*, not for this repo.
 
