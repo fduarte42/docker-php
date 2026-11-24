@@ -123,11 +123,10 @@ yet the CI matrix still schedules that job.
 - `cron-foreground` installs `/tmp/crontab` for `www-data` and dumps the env to `/etc/environment` so cron
   jobs see it.
 - `www-data` (uid 33) has passwordless sudo for exactly two commands: `/etc/init.d/apache2 reload` and
-  `/usr/local/bin/php-fpm-reload.sh`. `build.sh` also runs `setfacl -R [-d] -m u:33:rwX /var/www`, but the
-  buildx layer export drops ACL xattrs, so published images carry **no** ACLs (`/var/www` is plain
-  `root:root 775`). Consumers apply them at runtime instead — the docker-plugin project
-  (`src/utils/acl.rs`) runs `setfacl -R [-d] -m u:33:rwX /var/www` via
-  `docker exec` after `compose up`, with uid 33 hardcoded (`CONTAINER_WWW_DATA_UID`).
+  `/usr/local/bin/php-fpm-reload.sh`. Its home `/var/www` is owned by `www-data` itself (non-recursive
+  `chown` in `build.sh`), so tools can create `~/.cache`, `~/.local` etc. Don't use ACLs for this: the buildx
+  layer export drops ACL xattrs, so published images carry **none**. The docker-plugin project relies on the
+  `WWW_DATA_UID`/`WWW_DATA_GID` remap instead of ACLs.
 - Globally installed via Composer in-image: `squizlabs/php_codesniffer`, `maglnet/composer-require-checker`
   (pinned to `3.8.0` on 7.4), `vimeo/psalm`. These are tools *for consuming projects*, not for this repo.
 

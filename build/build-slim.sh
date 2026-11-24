@@ -224,9 +224,9 @@ for L in $LOCALES; do
     localedef -i $L -c -f UTF-8 -A /etc/locale.alias $L.UTF-8
 done
 
-# adjust permissions
-setfacl -R -m u:33:rwX /var/www
-setfacl -R -d -m u:33:rwX /var/www
+# www-data owns its home (not recursive: everything inside is chowned where it's created), so tools can
+# create ~/.cache, ~/.local etc. ACLs set here would be dropped by the buildx layer export anyway.
+chown www-data:www-data /var/www
 
 # setup npm
 mkdir -p /root/.npm
