@@ -206,3 +206,17 @@ ignored. Since any non-`-l` build pushes public tags, confirm before running a p
 - DON'T add a package without deciding whether it belongs in slim.
 - DON'T reorder builds in `build-all.sh` so a flavor precedes the tag it derives `FROM`.
 - DON'T commit new large vendored binaries without replacing the old ones and updating the matching glob/version.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues on fduarte42/docker-php, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root (created lazily). See `docs/agents/domain.md`.
