@@ -1,5 +1,6 @@
 name: Build and Push to GHCR
-run-name: ${{ github.event_name == 'schedule' && (github.event.schedule == '0 0 * * 4' && 'weekly' || 'monthly') || format('dispatch: {0}', inputs.php_versions) }}
+# quoted: the ': ' inside format() is a YAML mapping indicator in a plain scalar
+run-name: "${{ github.event_name == 'schedule' && (github.event.schedule == '0 0 * * 4' && 'weekly' || 'monthly') || format('dispatch: {0}', inputs.php_versions) }}"
 
 # One workflow, two schedules: each cron builds its own version set (WEEKLY / MONTHLY in prepare).
 # The cron strings are repeated in prepare and run-name to map a scheduled run back to its set.
