@@ -2,183 +2,113 @@
 
 ## Overview
 
-This is a custom PHP Docker image builder repository that creates and maintains Docker images for various PHP versions. The images are built with common PHP extensions and tools needed for web development, and are automatically published to both GitHub Container Registry (GHCR) and Docker Hub.
+Multi-arch (`linux/amd64`, `linux/arm64`) PHP-FPM + Apache images, one set per PHP version, for projects
+to run on. Every image comes with the common PHP extensions and tools for web development. They are
+rebuilt on a schedule and published to two registries:
 
-**Repository**: [fduarte42/docker-php](https://github.com/fduarte42/docker-php)  
-**Container Registries**:
 - GHCR: `ghcr.io/fduarte42/docker-php`
 - Docker Hub: `docker.io/fduarte42/docker-php`
 
-## Supported PHP Versions
+**Repository**: [fduarte42/docker-php](https://github.com/fduarte42/docker-php)
 
-The automated CI/CD pipeline builds and publishes Docker images for the following PHP versions:
-- **7.4**
-- **8.2**
-- **8.3**
-- **8.4**
-- **8.5**
+Maintainer-level detail (build internals, conventions, pitfalls) is in `CLAUDE.md`. Terms are defined in
+`CONTEXT.md`.
 
-Legacy versions (5.3, 5.5, 5.6, 7.0, 7.1, 7.2, 7.3, 7.4) are available in the `unsupported/` directory as reference.
+## Versions and tags
 
-## Directory Structure
+Each PHP version comes in one or two **variants**:
 
-```
-docker-php/
-├── build/                          # Main build files
-│   ├── Dockerfile                  # Primary Dockerfile
-│   ├── Dockerfile-slim             # Slim variant
-│   ├── Dockerfile-debug            # Debug variant
-│   ├── Dockerfile-chartdirector    # ChartDirector extension variant
-│   ├── Dockerfile-oci              # Oracle OCI variant
-│   ├── Dockerfile-sourceguardian   # SourceGuardian variant
-│   ├── build.sh                    # Main build script
-│   ├── build-slim.sh               # Slim build script
-│   ├── add-*.sh                    # Extension addition scripts
-│   ├── config/                     # Configuration files
-│   ├── driver/                     # Database drivers
-│   ├── extension/                  # PHP extensions
-│   ├── packages/                   # Pre-built packages
-│   └── scripts/                    # Build and runtime scripts
-├── unsupported/                    # Legacy PHP versions (5.3-8.1)
-├── .github/workflows/              # CI/CD workflows
-│   └── docker-build.yml            # Automated build workflow
-├── build-all.sh                    # Main orchestration script
-└── Readme.md                       # Quick README
+- **full** (`X.Y`): everything, including Chromium (for Puppeteer), wkhtmltopdf, pngquant and the
+  MS core fonts.
+- **slim** (`X.Y-slim`): full without the browser, PDF rendering and font packages.
 
-```
+**Flavors** are layered on top of a variant and can stack:
 
-## Build System
+- `-debug`: xdebug, with `display_errors` on.
+- `-oci`: Oracle Instant Client + oci8.
+- `-sourceguardian`: the SourceGuardian loader.
+- `-chartdirector`: ChartDirector.
 
-### Main Build Script: `build-all.sh`
+| PHP | Variants | Flavors | Rebuilt |
+|---|---|---|---|
+| 5.6 | full | debug, oci | monthly |
+| 7.4 | full | debug, oci, chartdirector | monthly |
+| 8.2 | full, slim | debug, oci, sourceguardian, chartdirector (full only) | monthly |
+| 8.3 | full, slim | debug, oci, sourceguardian | weekly |
+| 8.4 | full, slim | debug, oci, sourceguardian | weekly |
+| 8.5 | full, slim | debug, oci, sourceguardian | weekly |
 
-The `build-all.sh` script is the primary orchestration script that:
-- Determines the build environment (GitHub Actions vs. local)
-- Sets appropriate Docker registry tags
-- Handles PHP version-specific builds
+Tags include, for example, `8.4`, `8.4-debug`, `8.4-oci-debug`, `8.4-slim-oci-sourceguardian` and
+`8.2-chartdirector-debug`. `./build-all.sh -L <version>` prints the exact list for a version.
+The per-version gates live in `VERSION_TABLE` in `versions.sh`.
 
-**Usage**:
+## What is in the image
+
+- PHP-FPM + CLI from the sury.org packages, served by Apache. Debian trixie-slim base.
+- supervisord as the process manager (not systemd). It runs apache2, php-fpm, cron, rsyslog and the
+  one-shot `docker-php-init`.
+- Extensions: apcu, bcmath, bz2, curl, gd, igbinary, imagick, imap, intl, ldap, mbstring, memcached,
+  msgpack, mysqli, opcache, pdo_mysql, pdo_pgsql, pdo_sqlite, pgsql, raphf, redis, soap, sqlite3, ssh2,
+  xml, xsl and zip. Version-specific additions:
+  - decimal and http, from 7.4 on;
+  - apc and propro on 5.6 and 7.4;
+  - valkey_glide from 8.2 on.
+- Composer, plus the global tools `phpcs`, `psalm` and `composer-require-checker` (the last two are
+  missing on 5.6).
+- Node.js 24 and Yarn.
+- `pdftk`: a PHP shim on top of `qpdf` that implements pdftk's command line. There is no Java in the
+  images.
+- OS and PHP time zone: `Europe/Berlin`. Locales: en_US, en_GB, fr_FR, es_ES, pt_PT, de_DE.
+
+## Running it
+
 ```bash
-./build-all.sh <PHP_VERSION>
+docker run -d -p 80:80 -v /path/to/app:/var/www/html ghcr.io/fduarte42/docker-php:8.4
 ```
 
-### Docker Build Process
+- `WORKDIR /var/www/html`, `EXPOSE 80`.
+- `DOCUMENT_ROOT` (default `/`) is appended to `/var/www/html` for the Apache vhost.
+- **Own ini settings:** mount a file at `/usr/local/etc/php/conf.d/zzz-custom.ini`. cli and fpm both
+  load it last.
+- **Host ownership:** `-e WWW_DATA_UID=$(id -u) -e WWW_DATA_GID=$(id -g)` remaps `www-data` to your
+  ids before anything starts, so files written in bind mounts are owned by you.
+- **SSH:** `-e SSH_AUTH_PORT=<port>` forwards an SSH agent to `/tmp/ssh-agent.sock`. Alternatively,
+  mount a `/ssh` directory with `id_*` keys.
+- **GPG:** mount `/gnupg` containing `gpg-key.asc`, `gpg-secret-key.asc` and `trust.txt`.
+- **Cron:** put a crontab at `/tmp/crontab`. It is installed for `www-data`, and the jobs see the
+  container environment.
+- **Reloads:** `www-data` may run exactly two commands with passwordless sudo,
+  `/etc/init.d/apache2 reload` and `/usr/local/bin/php-fpm-reload.sh`.
+- **Hardening:** `display_errors` off and `log_errors` on (except in `-debug`), `ServerTokens Prod`,
+  no TRACE, no directory listings, and no ghostscript.
 
-The Dockerfile-based build process:
-1. **Base Image**: Debian Trixie Slim
-2. **Configuration Setup**: Keyboard, Bash, PHP-FPM reload script
-3. **Build Step**: Executes `build.sh` to install PHP and extensions
-4. **Post-Build Setup**: Supervisor configuration, Docker initialization script
-5. **Entry Point**: Supervisord for process management
+## Building
 
-### Docker Variants
-
-1. **Standard** (`Dockerfile`): Full-featured PHP image with common extensions
-2. **Slim** (`Dockerfile-slim`): Minimal PHP image for smaller deployments
-3. **Debug** (`Dockerfile-debug`): Development-focused with debugging tools
-4. **ChartDirector** (`Dockerfile-chartdirector`): Includes ChartDirector extension
-5. **OCI** (`Dockerfile-oci`): Oracle OCI database driver support
-6. **SourceGuardian** (`Dockerfile-sourceguardian`): SourceGuardian extension
-
-## Key Features
-
-### Environment Variables
-- **PUPPETEER_SKIP_CHROMIUM_DOWNLOAD**: `true` (optimized for headless operations)
-- **COMPOSER_HOME**: `/composer` (Composer configuration directory)
-- **COMPOSER_ALLOW_SUPERUSER**: `1` (Allows Composer to run as root)
-- **PHP_GC_MAX_LIFETIME**: `1440` (PHP session garbage collection)
-- **DOCUMENT_ROOT**: `/` (Web root configuration)
-
-### Pre-installed Components
-- PHP-FPM with CLI
-- Composer (dependency manager)
-- Chromium (for Puppeteer/headless operations)
-- Supervisor (process management)
-- Common PHP extensions (database drivers, image processing, etc.)
-- wkhtmltox (HTML to PDF/Image conversion)
-
-### Working Directory
-- **WORKDIR**: `/var/www/html`
-- **Exposed Port**: `80` (HTTP)
-
-### Initialization
-- Docker entrypoint: `/docker-php-init` script for runtime setup
-- Supervisor configuration: `/etc/supervisor/conf.d/supervisord.conf`
-
-## CI/CD Pipeline
-
-### Automated Build Workflow (`.github/workflows/docker-build.yml`)
-
-**Trigger Events**:
-- **Schedule**: Weekly (every Thursday at 00:00 UTC)
-- **Manual**: Can be triggered manually via `workflow_dispatch`
-
-**Build Matrix**: 5 PHP versions (7.4, 8.2, 8.3, 8.4, 8.5)
-
-**Process**:
-1. Checkout repository code
-2. Set up Docker Buildx for multi-platform builds
-3. Authenticate with GHCR (GitHub Container Registry)
-4. Authenticate with Docker Hub
-5. Build and push images to both registries with appropriate tags
-
-## Configuration Files
-
-- **`build/config/keyboard`**: Keyboard layout configuration
-- **`build/config/supervisord.conf`**: Process supervision configuration
-- **`build/scripts/.bashrc`**: Bash environment configuration for root and www-data users
-- **`build/scripts/php-fpm-reload.sh`**: PHP-FPM reload utility
-- **`build/scripts/cron-foreground`**: Cron daemon in foreground mode
-- **`build/scripts/docker-php-init`**: Docker initialization script
-
-## Image Tagging Strategy
-
-**For GitHub Actions builds** (automatic CI/CD):
-```
-ghcr.io/fduarte42/docker-php:X.Y
-docker.io/fduarte42/docker-php:X.Y
-```
-
-**For local builds**:
-```
-fduarte42/docker-php:X.Y
-```
-
-Where `X.Y` is the PHP version (e.g., `8.3`, `8.4`)
-
-## Extension Support
-
-The build system supports adding custom extensions via scripts:
-- `add-chartdirector.sh`: ChartDirector visualization library
-- `add-debug.sh`: Debugging tools
-- `add-oci.sh`: Oracle OCI database driver
-- `add-sourceguardian.sh`: SourceGuardian encoder protection
-
-## Usage
-
-### Pull Pre-built Image
 ```bash
-docker pull ghcr.io/fduarte42/docker-php:8.4
-# or
-docker pull fduarte42/docker-php:8.4
+./build-all.sh -h                              # usage
+./build-all.sh -l -V -p linux/amd64 -s 8.4     # local single-arch build of the 8.4 slim chain, verified
+./verify-image.sh fduarte42/docker-php:8.4 8.4 # check one image against the runtime contract
 ```
 
-### Run Container
-```bash
-docker run -d \
-  -p 80:80 \
-  -v /path/to/app:/var/www/html \
-  fduarte42/docker-php:8.4
-```
+Without `-l`, `build-all.sh` **pushes** to the registries. Because local builds use `--load`, pair `-l`
+with a single `-p` platform.
 
-### Build Locally
-```bash
-./build-all.sh 8.4
-```
+`verify-image.sh` checks the following:
 
-## Notes
+- config, environment and modules;
+- ini values, time zone and locales;
+- sudoers and the Composer tools;
+- pdftk and the uid remap;
+- a live request through Apache to php-fpm.
 
-- Images are automatically rebuilt weekly to ensure security patches are applied
-- The repository uses Debian Trixie (cutting-edge but stable) as the base
-- Supervisor is used as the main process manager instead of systemd
-- The images are optimized for containerized environments
-- Composer dependencies are globally available via the `PATH` variable
+## CI
+
+`.github/workflows/docker-build.yml`:
+
+- **Weekly** (Thursday 00:00 UTC): 8.3, 8.4, 8.5.
+- **Monthly** (1st, 12:00 UTC): 5.6, 7.4, 8.2.
+- **Manual** (`workflow_dispatch`): `all`, `weekly`, `monthly`, or a list of versions.
+
+Each version/variant builds natively per architecture (arm64 on an arm64 runner), is verified with `-V`,
+and is pushed as `TAG-amd64` / `TAG-arm64`. A final `merge` job joins those into the multi-arch `TAG`.
+An image that fails verification never reaches its public tag.

@@ -11,20 +11,18 @@ for d in /usr/lib/*-linux-gnu; do
 done
 ldconfig
 
-# extract libs and sdk
+# extract libs and sdk (zips are on the read-only /tmp/vendor mount)
 if [ "$TARGETARCH" = "arm64" ]; then
-  unzip /tmp/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -d /opt/oracle
-  unzip /tmp/instantclient-sdk-linux.arm64-19.10.0.0.0dbru.zip -d /opt/oracle
+  unzip /tmp/vendor/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -d /opt/oracle
+  unzip /tmp/vendor/instantclient-sdk-linux.arm64-19.10.0.0.0dbru.zip -d /opt/oracle
   ln -s /opt/oracle/instantclient_19_10 /opt/oracle/instantclient
 fi
 
 if [ "$TARGETARCH" = "amd64" ]; then
-  unzip /tmp/instantclient-basic-linux.x64-21.4.0.0.0dbru.zip -d /opt/oracle
-  unzip /tmp/instantclient-sdk-linux.x64-21.4.0.0.0dbru.zip -d /opt/oracle
+  unzip /tmp/vendor/instantclient-basic-linux.x64-21.4.0.0.0dbru.zip -d /opt/oracle
+  unzip /tmp/vendor/instantclient-sdk-linux.x64-21.4.0.0.0dbru.zip -d /opt/oracle
   ln -s /opt/oracle/instantclient_21_4 /opt/oracle/instantclient
 fi
-
-rm /tmp/*.zip
 
 # update ldconfig
 echo /opt/oracle/instantclient >> /etc/ld.so.conf

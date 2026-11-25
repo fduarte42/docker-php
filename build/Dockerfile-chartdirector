@@ -9,10 +9,7 @@ ARG PHP_VERSION=7.4
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# add chartdirector extension
-COPY extension/chartdir_php_linux_*.tar.gz /tmp/
-
+# add chartdirector extension (tarballs bind-mounted read-only, see Dockerfile-oci)
 COPY add-chartdirector.sh /add-chartdirector.sh
-RUN bash /add-chartdirector.sh && rm /add-chartdirector.sh
-
-RUN rm /tmp/chartdir_php_linux_*.tar.gz
+RUN --mount=type=bind,source=extension,target=/tmp/vendor \
+    bash /add-chartdirector.sh && rm /add-chartdirector.sh

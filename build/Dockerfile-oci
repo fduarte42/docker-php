@@ -10,11 +10,8 @@ ARG PHP_VERSION=7.4
 ENV DEBIAN_FRONTEND=noninteractive
 
 # add oci packages
-RUN mkdir -p /opt/oracle
-COPY driver/oracle/* /tmp/
-
+# the instant client zips are bind-mounted (read-only) rather than COPYed: a COPY would leave all of them,
+# both arches, in a layer behind even though add-oci.sh only unpacks the matching pair
 COPY add-oci.sh /add-oci.sh
-RUN bash /add-oci.sh && rm /add-oci.sh
-
-# cleanup
-RUN rm -rf /var/lib/apt/lists/*
+RUN --mount=type=bind,source=driver/oracle,target=/tmp/vendor \
+    bash /add-oci.sh && rm /add-oci.sh

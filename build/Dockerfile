@@ -8,19 +8,20 @@ ARG TAG_SUFFIX=""
 FROM debian:trixie-slim AS valkey-glide-builder
 ARG TARGETARCH
 ARG PHP_VERSION
+# yes|no from the version table in build-all.sh; no default on purpose, like VARIANT below
+ARG VALKEY_GLIDE
 ENV DEBIAN_FRONTEND=noninteractive
 COPY build-valkey-glide.sh /build-valkey-glide.sh
 RUN bash /build-valkey-glide.sh
 
-FROM debian:trixie-slim
+# shared by both variants; VARIANT (full|slim) has no default on purpose - build.sh rejects anything else.
+# build-all.sh passes it together with the matching --target (see variant_args).
+FROM debian:trixie-slim AS image
 ARG TARGETARCH
 ARG PHP_VERSION
+ARG VARIANT
 
 ENV DEBIAN_FRONTEND=noninteractive
-
-# add puppeteer config
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 # Register the COMPOSER_HOME environment variable
 ENV COMPOSER_HOME=/composer
@@ -44,13 +45,12 @@ RUN chown -R www-data:www-data /var/www/.bashrc
 COPY scripts/php-fpm-reload.sh /usr/local/bin/php-fpm-reload.sh
 RUN chmod 755 /usr/local/bin/php-fpm-reload.sh
 
-COPY packages/wkhtmltox_*.deb /tmp/
-
 # build
-# the valkey_glide .so is bind-mounted rather than COPYed: a COPY would leave a ~50MB
-# layer behind even though build.sh only installs the file into the extension dir
+# the valkey_glide .so and the wkhtmltox debs are bind-mounted rather than COPYed: a COPY would leave
+# its files in a layer behind even though build.sh only installs from them. Both mounts are read-only.
 COPY build.sh /build.sh
 RUN --mount=type=bind,from=valkey-glide-builder,source=/out,target=/tmp/valkey-glide \
+    --mount=type=bind,source=packages,target=/tmp/packages \
     bash /build.sh && rm /build.sh
 
 # post-build
@@ -72,3 +72,10 @@ EXPOSE 80
 # remaps www-data to WWW_DATA_UID/WWW_DATA_GID (if set) before anything runs as www-data, then execs CMD
 ENTRYPOINT ["/usr/local/bin/docker-php-entrypoint"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+
+FROM image AS full
+# add puppeteer config - chromium is a full-only package
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+FROM image AS slim

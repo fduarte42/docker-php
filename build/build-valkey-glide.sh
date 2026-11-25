@@ -9,11 +9,19 @@ export TERM=linux
 # the final image and only /out/valkey_glide.so is copied out of it.
 mkdir -p /out
 
-# no valkey_glide build for other versions - an empty /out is what keeps their image build working
-if [[ ! $PHP_VERSION =~ (8\.2|8\.3|8\.4|8\.5) ]]; then
-  echo "valkey_glide: no build for PHP ${PHP_VERSION}, leaving /out empty"
-  exit 0
-fi
+# VALKEY_GLIDE comes from the version table in build-all.sh. "no" leaves /out empty, which is what
+# keeps those versions' image build working (build.sh only installs the .so if it exists).
+case "$VALKEY_GLIDE" in
+  yes) ;;
+  no)
+    echo "valkey_glide: not built for PHP ${PHP_VERSION}, leaving /out empty"
+    exit 0
+    ;;
+  *)
+    echo "VALKEY_GLIDE must be yes or no (got '${VALKEY_GLIDE}') - build-all.sh passes it" >&2
+    exit 1
+    ;;
+esac
 
 # bump these together
 VALKEY_GLIDE_VERSION=1.1.2
