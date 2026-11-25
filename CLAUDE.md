@@ -62,7 +62,8 @@ yet the CI matrix still schedules that job.
   `GITHUB_ACTIONS=true`, else plain `fduarte42/docker-php`), and the full flavor matrix, expressed as
   `build <tag> <dockerfile> [extra args]` calls. Also owns the `valkey-glide-builder` registry cache
   (CI only) and, via `-L`, is the single source of truth for the tag list the CI merge job consumes.
-- `build/Dockerfile*` — thin; they copy assets and delegate the real work to a shell script. `Dockerfile`
+- `build/Dockerfile*` — thin; they bind-mount their vendored assets and delegate the real work to a shell
+  script. `Dockerfile`
   has four stages: `valkey-glide-builder` compiles the extension; `image` runs `build.sh` with `ARG VARIANT`
   (no default) and bind-mounts both the resulting `.so` and `packages/` (wkhtmltox debs) into that layer;
   `full` (= `image` + the Puppeteer `ENV`) and `slim` (= `image`) are the final targets. `build-all.sh`
@@ -83,9 +84,12 @@ yet the CI matrix still schedules that job.
 - `build/scripts/` — baked into the image: `docker-php-entrypoint`, `docker-php-init`, `cron-foreground`, `php-fpm-reload.sh`, `.bashrc`,
   `pdftk`.
 - `build/packages/`, `build/extension/`, `build/driver/oracle/` — **vendored third-party binaries committed to
-  git** (patched wkhtmltox debs, ChartDirector, SourceGuardian loaders, Oracle Instant Client zips). Filenames
-  are matched by glob in the Dockerfiles and by exact version string in `add-oci.sh` — replacing one means
-  updating that script too.
+  git** (patched wkhtmltox debs, ChartDirector, SourceGuardian loaders, Oracle Instant Client zips). They are
+  never `COPY`ed: a `COPY` + later `rm` still ships the files (all four Oracle zips, both arches, were
+  ~139MB of every `-oci*` tag). Each Dockerfile bind-mounts its asset dir read-only for the one `RUN` that
+  needs it — `packages/` at `/tmp/packages` for `build.sh`, `driver/oracle/` or `extension/` at
+  `/tmp/vendor` for the flavor scripts. Scripts pick the file by exact name per `$TARGETARCH` (versions
+  included in `add-oci.sh`) — replacing one means updating that script too, and must not try to delete it.
 - `.github/workflows/docker-build.yml` — weekly (Thu 00:00 UTC) + `workflow_dispatch`, builds **7.4, 8.2, 8.5**.
   `.github/workflows/docker-build-secondary.yml` is an identical copy that builds **5.6, 8.3, 8.4** and runs only
   on `workflow_dispatch` (no schedule). Keep the two in sync when editing the jobs. Three jobs:
@@ -181,8 +185,9 @@ yet the CI matrix still schedules that job.
   image (consumers `composer require valkey-io/valkey-glide-php`).
 - New flavor = `add-<name>.sh` + `Dockerfile-<name>` (ARG `PHP_VERSION`/`BASE_IMAGENAME`/`FLAVOR`/
   `TAG_SUFFIX`, `FROM ${BASE_IMAGENAME}:${PHP_VERSION}${FLAVOR}${TAG_SUFFIX}`) + `build` lines in
-  `build-all.sh` for both slim and non-slim, placed after their base tag. **`TAG_SUFFIX` is not
-  optional** — omit it and the flavor will pull the multi-arch base tag from the previous run instead of
+  `build-all.sh` for both slim and non-slim, placed after their base tag. Vendored files go under `build/`
+  and are bind-mounted at `/tmp/vendor` on the script's `RUN` (copy `Dockerfile-chartdirector`), not `COPY`ed.
+  **`TAG_SUFFIX` is not optional** — omit it and the flavor will pull the multi-arch base tag from the previous run instead of
   the per-arch tag this run just pushed.
 - Every layer script ends with `apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*`.
   Preserve that; image size is a goal.

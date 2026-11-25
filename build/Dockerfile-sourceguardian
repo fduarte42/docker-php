@@ -9,10 +9,7 @@ ARG PHP_VERSION=8.2
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# add chartdirector extension
-COPY extension/loaders.linux-*.tar.bz2 /tmp/
-
+# add sourceguardian loader (tarballs bind-mounted read-only, see Dockerfile-oci)
 COPY add-sourceguardian.sh /add-sourceguardian.sh
-RUN bash /add-sourceguardian.sh && rm /add-sourceguardian.sh
-
-RUN rm /tmp/loaders.linux-*.tar.bz2
+RUN --mount=type=bind,source=extension,target=/tmp/vendor \
+    bash /add-sourceguardian.sh && rm /add-sourceguardian.sh

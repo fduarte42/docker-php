@@ -7,11 +7,11 @@ mkdir /tmp/sourceguardian
 cd /tmp/sourceguardian
 
 if [ "$TARGETARCH" = "arm64" ]; then
-  tar xjf ../loaders.linux-aarch64.tar.bz2
+  tar xjf /tmp/vendor/loaders.linux-aarch64.tar.bz2
 fi
 
 if [ "$TARGETARCH" = "amd64" ]; then
-  tar xjf ../loaders.linux-x86_64.tar.bz2
+  tar xjf /tmp/vendor/loaders.linux-x86_64.tar.bz2
 fi
 
 cp -R ixed.${PHP_VERSION}.lin ${EXTENSION_DIR}
