@@ -1,20 +1,24 @@
 name: Build and Push to GHCR
+run-name: ${{ github.event_name == 'schedule' && (github.event.schedule == '0 0 * * 4' && 'weekly' || 'monthly') || format('dispatch: {0}', inputs.php_versions) }}
 
+# One workflow, two schedules: each cron builds its own version set (WEEKLY / MONTHLY in prepare).
+# The cron strings are repeated in prepare and run-name to map a scheduled run back to its set.
 on:
   schedule:
-    - cron: '0 0 * * 4'
+    - cron: '0 0 * * 4'    # weekly, Thu 00:00 UTC
+    - cron: '0 12 1 * *'   # monthly, 1st 12:00 UTC
   workflow_dispatch:
     inputs:
       php_versions:
-        description: 'Space-separated PHP versions to build, or "all"'
+        description: '"all" (both sets), "weekly", "monthly", or space-separated PHP versions'
         required: false
         default: 'all'
 
 jobs:
-  # Turns the dispatch input into the job matrix so a single version can be tested without running the
-  # whole fan-out. "all" means this workflow's versions (7.4 8.2 8.5); 5.6, 8.3 and 8.4 live in docker-build-secondary.yml.
-  # build-all.sh -M decides which (version, variant) pairs exist, so no job is scheduled that builds
-  # nothing (5.6 and 7.4 have no slim variant), and an unknown version fails here instead of later.
+  # Turns the schedule or dispatch input into the job matrix, so a single version can be tested
+  # without running the whole fan-out. build-all.sh -M decides which (version, variant) pairs exist,
+  # so no job is scheduled that builds nothing (5.6 and 7.4 have no slim variant), and an unknown
+  # version fails here instead of later.
   prepare:
     runs-on: ubuntu-latest
     outputs:
@@ -28,11 +32,24 @@ jobs:
         # via env, not ${{ }} inside the script - the input must not be interpolated into shell
         env:
           PHP_VERSIONS_INPUT: ${{ inputs.php_versions }}
+          SCHEDULE: ${{ github.event.schedule }}
         run: |
-          IN="$PHP_VERSIONS_INPUT"
-          if [ -z "$IN" ] || [ "$IN" = "all" ]; then
-            IN="7.4 8.2 8.5"
-          fi
+          WEEKLY="8.3 8.4 8.5"
+          MONTHLY="5.6 7.4 8.2"
+
+          case "$SCHEDULE" in
+            "0 0 * * 4")  IN=weekly ;;
+            "0 12 1 * *") IN=monthly ;;
+            "")           IN="$PHP_VERSIONS_INPUT" ;;
+            *)            echo "::error::no version set for schedule '$SCHEDULE'"; exit 1 ;;
+          esac
+
+          case "$IN" in
+            ""|all)  IN="$WEEKLY $MONTHLY" ;;
+            weekly)  IN="$WEEKLY" ;;
+            monthly) IN="$MONTHLY" ;;
+          esac
+
           JOBS=$(./build-all.sh -M $IN)
           echo "jobs=$JOBS" >> "$GITHUB_OUTPUT"
           echo "Jobs: $JOBS"

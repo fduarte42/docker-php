@@ -58,7 +58,8 @@ Which images a version gets is decided in one place: `VERSION_TABLE` at the top 
 `default`, `slim`, `sourceguardian`, `chartdirector`, `valkey-glide`), queried with `has <version> <feature>`.
 The build loop, the valkey-glide builder stage (`--build-arg VALKEY_GLIDE=yes|no`) and the CI matrix (`-M`)
 all read it. **Adding a new PHP version means** a table row, its package branches in `build.sh` (those stay
-next to their `apt-get` on purpose, not in the table), and adding it to one workflow's `IN=` list.
+next to their `apt-get` on purpose, not in the table), and adding it to `WEEKLY` or `MONTHLY` in the workflow's
+`prepare` step.
 
 ## Layout
 - `build-all.sh` — orchestration: option parsing, registry/tag selection (GHCR+Docker Hub under
@@ -94,13 +95,16 @@ next to their `apt-get` on purpose, not in the table), and adding it to one work
   needs it — `packages/` at `/tmp/packages` for `build.sh`, `driver/oracle/` or `extension/` at
   `/tmp/vendor` for the flavor scripts. Scripts pick the file by exact name per `$TARGETARCH` (versions
   included in `add-oci.sh`) — replacing one means updating that script too, and must not try to delete it.
-- `.github/workflows/docker-build.yml` — weekly (Thu 00:00 UTC) + `workflow_dispatch`, builds **7.4, 8.2, 8.5**.
-  `.github/workflows/docker-build-secondary.yml` is an identical copy that builds **5.6, 8.3, 8.4** and runs only
-  on `workflow_dispatch` (no schedule). Keep the two in sync when editing the jobs. Three jobs:
-  - `prepare` — turns the `php_versions` dispatch input (`"all"` or a space-separated list) into the job
-    matrix via `./build-all.sh -M`, which lists only the `{php_version, variant}` pairs that build something
-    (no slim jobs for 5.6/7.4) and fails on an unknown version. Use it to test one version instead of the
-    whole fan-out; `"all"`/`schedule` get that workflow's own version list.
+- `.github/workflows/docker-build.yml` — the only workflow. Two crons: weekly (Thu 00:00 UTC) builds the
+  `WEEKLY` set **8.3, 8.4, 8.5**; monthly (1st, 12:00 UTC) builds the `MONTHLY` set **5.6, 7.4, 8.2**. Both
+  lists live in the `prepare` step; the cron strings there must match the `on.schedule` entries exactly
+  (an unmatched schedule fails `prepare` rather than building nothing). `run-name` shows weekly / monthly /
+  `dispatch: <input>`. Three jobs:
+  - `prepare` — picks the versions (cron → its set; `workflow_dispatch` input `php_versions`: `all` = both
+    sets, `weekly`, `monthly`, or a space-separated list) and turns them into the job matrix via
+    `./build-all.sh -M`, which lists only the `{php_version, variant}` pairs that build something (no slim
+    jobs for 5.6/7.4) and fails on an unknown version. Dispatch one version to test it instead of the whole
+    fan-out.
   - `build` — matrix of `job` (from `prepare`) × `amd64|arm64`, `fail-fast: false`, 2G swap, logs into
     both registries (`CR_PAT`, `DOCKERHUB_USER`, `DOCKERHUB_PAT`), then
     `./build-all.sh -s|-n -p linux/<arch> -t -<arch> <version>`. **arm64 runs on `ubuntu-24.04-arm`**
