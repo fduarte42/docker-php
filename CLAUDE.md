@@ -22,9 +22,11 @@ Published to `ghcr.io/fduarte42/docker-php` and `docker.io/fduarte42/docker-php`
 ./build-all.sh -s 8.4                  # slim flavors only
 ./build-all.sh -n 8.4                  # skip slim flavors
 ./build-all.sh -L -n 8.4               # print the tags it WOULD build, touch nothing
+./build-all.sh -M 7.4 8.2              # print the CI job matrix (JSON), touch nothing
 ./build-all.sh -p linux/arm64 -t -arm64 8.4   # single arch into ...:8.4-arm64 etc (what CI does)
 ```
-- No argument ⇒ versions default to `8.2 8.3 8.4 8.5` (note: **not** 7.4, which CI does build).
+- No argument ⇒ the versions marked `default` in `VERSION_TABLE` (`8.2 8.3 8.4 8.5`; **not** 5.6/7.4, which
+  CI does build). A version not in the table is rejected.
 - Without `-l` the script builds with `--push` — it publishes. Always use `-l` when experimenting.
 - Local-build friction to expect: `-l` maps to `--load`, which cannot export a multi-platform manifest
   into the docker image store, so pair `-l` with a single `-p` platform. `-l` also passes `--pull`, so
@@ -32,8 +34,8 @@ Published to `ghcr.io/fduarte42/docker-php` and `docker.io/fduarte42/docker-php`
   image; build the base tag alone first, or accept that flavor chains only compose properly on a push build.
 - Every buildx invocation goes through the `build <tag> <dockerfile> [extra args]` helper. Add a flavor
   by adding a `build` line, not by copying a 200-char command.
-- `-L` prints tags to **stdout** and nothing else — the "Running locally/inside GitHub Actions" banner
-  goes to stderr specifically so `-L` stays pipeable. Keep it that way; CI parses it.
+- `-L` and `-M` print to **stdout** and nothing else — the "Running locally/inside GitHub Actions" banner
+  goes to stderr specifically so they stay pipeable. Keep it that way; CI parses both.
 - `-t SUFFIX` appends to every tag *and* is passed as `--build-arg TAG_SUFFIX`, which the derived
   Dockerfiles splice into their `FROM`. That is what lets one arch build in isolation.
 - There is nothing to lint or test. Verification = build the image and run it.
@@ -52,10 +54,11 @@ keep building base → debug → oci → sourceguardian in that sequence:
 | `Dockerfile-sourceguardian` | `X.Y`, `X.Y-oci`, `X.Y-slim`, `X.Y-slim-oci` | `…-sourceguardian` variants (8.2+ only) |
 | `Dockerfile-chartdirector` | `X.Y`, `X.Y-debug` | `X.Y-chartdirector`, `X.Y-chartdirector-debug` (7.4 and 8.2 only, non-slim; the vendored tarballs ship `phpchartdir<ver>.dll` up to 8.3 — nothing for 8.4/8.5) |
 
-Version gates in `build-all.sh` are literal regexes (`8\.2|8\.3|8\.4|8\.5`): **adding a new PHP version means
-editing those regexes**, the `VERSIONS` default, the version branches in `build.sh`, the gate in
-`build/build-valkey-glide.sh`, and the CI matrix. Known dead combination: `./build-all.sh -s 7.4` builds nothing (slim block is gated to 8.2+),
-yet the CI matrix still schedules that job.
+Which images a version gets is decided in one place: `VERSION_TABLE` at the top of `build-all.sh` (columns
+`default`, `slim`, `sourceguardian`, `chartdirector`, `valkey-glide`), queried with `has <version> <feature>`.
+The build loop, the valkey-glide builder stage (`--build-arg VALKEY_GLIDE=yes|no`) and the CI matrix (`-M`)
+all read it. **Adding a new PHP version means** a table row, its package branches in `build.sh` (those stay
+next to their `apt-get` on purpose, not in the table), and adding it to one workflow's `IN=` list.
 
 ## Layout
 - `build-all.sh` — orchestration: option parsing, registry/tag selection (GHCR+Docker Hub under
@@ -77,7 +80,8 @@ yet the CI matrix still schedules that job.
   `/tmp/packages` mount; it installs straight into `/usr/local/bin`). The msfonts EULA preseed runs for
   both; it is a no-op for slim.
 - `build/build-valkey-glide.sh` — runs only in the `valkey-glide-builder` stage; produces
-  `/out/valkey_glide.so` (empty `/out` for versions outside `8.2–8.5`). Shared verbatim by both Dockerfiles.
+  `/out/valkey_glide.so`, or an empty `/out` when `VALKEY_GLIDE=no` (required arg, no default, like `VARIANT`;
+  `build-all.sh` passes it from the table).
 - `build/add-*.sh` — one per optional flavor: `add-debug.sh` (xdebug), `add-oci.sh` (Oracle Instant Client
   + pecl oci8), `add-sourceguardian.sh` (ixed loader), `add-chartdirector.sh`.
 - `build/config/` — `supervisord.conf`, `keyboard`.
@@ -93,10 +97,11 @@ yet the CI matrix still schedules that job.
 - `.github/workflows/docker-build.yml` — weekly (Thu 00:00 UTC) + `workflow_dispatch`, builds **7.4, 8.2, 8.5**.
   `.github/workflows/docker-build-secondary.yml` is an identical copy that builds **5.6, 8.3, 8.4** and runs only
   on `workflow_dispatch` (no schedule). Keep the two in sync when editing the jobs. Three jobs:
-  - `prepare` — turns the `php_versions` dispatch input (`"all"` or a space-separated list) into a
-    matrix JSON. Use it to test one version instead of the whole fan-out; `"all"`/`schedule` get that
-    workflow's own version list.
-  - `build` — matrix of PHP × `slim|non-slim` × `amd64|arm64`, `fail-fast: false`, 2G swap, logs into
+  - `prepare` — turns the `php_versions` dispatch input (`"all"` or a space-separated list) into the job
+    matrix via `./build-all.sh -M`, which lists only the `{php_version, variant}` pairs that build something
+    (no slim jobs for 5.6/7.4) and fails on an unknown version. Use it to test one version instead of the
+    whole fan-out; `"all"`/`schedule` get that workflow's own version list.
+  - `build` — matrix of `job` (from `prepare`) × `amd64|arm64`, `fail-fast: false`, 2G swap, logs into
     both registries (`CR_PAT`, `DOCKERHUB_USER`, `DOCKERHUB_PAT`), then
     `./build-all.sh -s|-n -p linux/<arch> -t -<arch> <version>`. **arm64 runs on `ubuntu-24.04-arm`**
     (free for public repos), not under QEMU — `include:` maps `arch` → `runner`.
@@ -154,7 +159,8 @@ yet the CI matrix still schedules that job.
   download in `add-oci.sh` (and the `pecl_install` helper removed from `build.sh` in git history).
 - `valkey_glide` has no sury package either: a pinned, sha256-verified `pie.phar` builds it from the
   upstream source release. Because it compiles glide's Rust FFI core, that happens in its own
-  `valkey-glide-builder` stage (`build/build-valkey-glide.sh`), gated to 8.2–8.5, which sets up the sury
+  `valkey-glide-builder` stage (`build/build-valkey-glide.sh`), gated by the table's `valkey-glide` column
+  (8.2–8.5; glide needs PHP ≥ 8.2), which sets up the sury
   repo, installs `php${PHP_VERSION}-cli`/`-dev` + a rustup toolchain (`VALKEY_GLIDE_RUST_VERSION`) +
   `cmake`, `libffi-dev`, `libssl-dev`, `libprotobuf-c-dev`, `python3` (needed by `config.m4`) and **both**
   protobuf compilers — `protoc` for glide-core's build script and `protoc-c` for the extension's C
@@ -177,7 +183,7 @@ yet the CI matrix still schedules that job.
     `php-config${PHP_VERSION}` — `php${PHP_VERSION}-dev` is never installed in the final image.
   - `libprotobuf-c1` and `libffi8` must stay explicitly installed: the `.so` links against them and
     `apt-get autoremove` would otherwise take them.
-  - For a PHP version outside the gate the builder stage exits early leaving `/out` empty, and the
+  - With `VALKEY_GLIDE=no` the builder stage exits early leaving `/out` empty, and the
     `if [ -f /tmp/valkey-glide/valkey_glide.so ]` guard in `build.sh` skips the install. That is how 7.4
     still builds — don't replace the guard with a version regex.
   Bump `PIE_VERSION`/`PIE_SHA256`, `CBINDGEN_VERSION` + its two hashes, and `VALKEY_GLIDE_VERSION`

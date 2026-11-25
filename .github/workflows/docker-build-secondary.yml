@@ -12,15 +12,20 @@ on:
         default: 'all'
 
 jobs:
-  # Turns the dispatch input into a matrix so a single version can be tested without running the
+  # Turns the dispatch input into the job matrix so a single version can be tested without running the
   # whole fan-out. "all" means this workflow's versions (5.6 8.3 8.4).
+  # build-all.sh -M decides which (version, variant) pairs exist, so no job is scheduled that builds
+  # nothing (5.6 and 7.4 have no slim variant), and an unknown version fails here instead of later.
   prepare:
     runs-on: ubuntu-latest
     outputs:
-      versions: ${{ steps.versions.outputs.versions }}
+      jobs: ${{ steps.matrix.outputs.jobs }}
     steps:
-      - name: Resolve PHP versions
-        id: versions
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Resolve job matrix
+        id: matrix
         # via env, not ${{ }} inside the script - the input must not be interpolated into shell
         env:
           PHP_VERSIONS_INPUT: ${{ inputs.php_versions }}
@@ -29,20 +34,20 @@ jobs:
           if [ -z "$IN" ] || [ "$IN" = "all" ]; then
             IN="5.6 8.3 8.4"
           fi
-          JSON=$(printf '%s\n' $IN | jq -R . | jq -sc .)
-          echo "versions=$JSON" >> "$GITHUB_OUTPUT"
-          echo "Building versions: $JSON"
+          JOBS=$(./build-all.sh -M $IN)
+          echo "jobs=$JOBS" >> "$GITHUB_OUTPUT"
+          echo "Jobs: $JOBS"
 
   # One job per (version, variant, arch). arm64 runs on a native arm runner instead of under QEMU,
   # so each job builds a single platform into an arch-suffixed tag; the merge job stitches them.
   build:
     needs: prepare
+    name: build ${{ matrix.job.php_version }} ${{ matrix.job.variant }} ${{ matrix.arch }}
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        php_version: ${{ fromJSON(needs.prepare.outputs.versions) }}
-        variant: [ "slim", "non-slim" ]
+        job: ${{ fromJSON(needs.prepare.outputs.jobs) }}
         arch: [ "amd64", "arm64" ]
         include:
           - arch: amd64
@@ -90,8 +95,8 @@ jobs:
 
       - name: Build and push Docker image
         env:
-          PHPV: ${{ matrix.php_version }}
-          VARIANT: ${{ matrix.variant }}
+          PHPV: ${{ matrix.job.php_version }}
+          VARIANT: ${{ matrix.job.variant }}
           ARCH: ${{ matrix.arch }}
         run: |
           if [ "$VARIANT" = "slim" ]; then FLAG=-s; else FLAG=-n; fi
@@ -101,6 +106,7 @@ jobs:
   # from build-all.sh -L so the flavor matrix is not duplicated here.
   merge:
     needs: [ prepare, build ]
+    name: merge ${{ matrix.job.php_version }} ${{ matrix.job.variant }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -108,8 +114,7 @@ jobs:
       # in under a minute and got 429s (run 33758431135); GHCR handled the same load fine.
       max-parallel: 2
       matrix:
-        php_version: ${{ fromJSON(needs.prepare.outputs.versions) }}
-        variant: [ "slim", "non-slim" ]
+        job: ${{ fromJSON(needs.prepare.outputs.jobs) }}
 
     steps:
       - name: Checkout repository
@@ -133,8 +138,8 @@ jobs:
 
       - name: Merge per-arch tags into multi-arch manifests
         env:
-          PHPV: ${{ matrix.php_version }}
-          VARIANT: ${{ matrix.variant }}
+          PHPV: ${{ matrix.job.php_version }}
+          VARIANT: ${{ matrix.job.variant }}
         run: |
           if [ "$VARIANT" = "slim" ]; then FLAG=-s; else FLAG=-n; fi
           TAGS=$(./build-all.sh -L "$FLAG" "$PHPV")

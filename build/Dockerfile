@@ -8,6 +8,8 @@ ARG TAG_SUFFIX=""
 FROM debian:trixie-slim AS valkey-glide-builder
 ARG TARGETARCH
 ARG PHP_VERSION
+# yes|no from the version table in build-all.sh; no default on purpose, like VARIANT below
+ARG VALKEY_GLIDE
 ENV DEBIAN_FRONTEND=noninteractive
 COPY build-valkey-glide.sh /build-valkey-glide.sh
 RUN bash /build-valkey-glide.sh
