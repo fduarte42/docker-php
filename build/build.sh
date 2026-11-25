@@ -4,6 +4,20 @@ set -e
 export DEBIAN_FRONTEND=noninteractive
 export TERM=linux
 
+# full = everything; slim = the same image minus the packages in FULL_PACKAGES and the wkhtmltox deb
+case "$VARIANT" in
+  full)
+    FULL_PACKAGES=(chromium pngquant ttf-mscorefonts-installer xfonts-base xfonts-75dpi)
+    ;;
+  slim)
+    FULL_PACKAGES=()
+    ;;
+  *)
+    echo "VARIANT must be full or slim, got '${VARIANT}'" >&2
+    exit 1
+    ;;
+esac
+
 # init packages
 sed -i 's/^Components: main$/& contrib/' /etc/apt/sources.list.d/debian.sources
 apt-get update
@@ -27,6 +41,7 @@ apt-get update
 apt-get remove -y --purge python3 python3-minimal python3.*
 apt-get upgrade -y
 
+# harmless for slim, which never installs the package
 echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula \
     select true | debconf-set-selections
 
@@ -34,7 +49,6 @@ apt-get install -y \
   acl \
   apache2 \
   bzip2 \
-  chromium \
   cron \
   curl \
   ffmpeg \
@@ -72,20 +86,23 @@ apt-get install -y \
   php${PHP_VERSION}-xsl \
   php${PHP_VERSION}-zip \
   p7zip-full \
-  pngquant \
   poppler-utils \
   qpdf \
   rsyslog \
   socat \
   sudo \
   supervisor \
-  ttf-mscorefonts-installer \
   unzip \
   wget \
-  xfonts-base \
-  xfonts-75dpi \
-  yarn
+  yarn \
+  "${FULL_PACKAGES[@]}"
 
+if [ "$VARIANT" = full ]; then
+  # wkhtmltopdf with patched qt, bind-mounted read-only at /tmp/packages by the Dockerfile.
+  # Its font dependencies (xfonts-*) come from FULL_PACKAGES above. The deb installs straight
+  # into /usr/local/bin (wkhtmltopdf + wkhtmltoimage), so no symlink is needed.
+  dpkg -i /tmp/packages/wkhtmltox_*_${TARGETARCH}.deb
+fi
 
 # no decimal package for 5.6
 if [[ ! $PHP_VERSION =~ (5\.6) ]]; then
@@ -129,7 +146,6 @@ ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /usr/local/etc/php/c
 ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /etc/php/${PHP_VERSION}/fpm/conf.d
 ln -s /etc/php/${PHP_VERSION}/mods-available/zzz-custom.ini /etc/php/${PHP_VERSION}/cli/conf.d
 ln -s /usr/bin/php /usr/local/bin/php
-ln -s /usr/bin/wkhtmltopdf /usr/local/bin/wkhtmltopdf
 
 # apcu
 if [[ $PHP_VERSION =~ (7\.4) ]]; then
@@ -302,17 +318,6 @@ else
     composer global require maglnet/composer-require-checker
     composer global require vimeo/psalm
 fi
-
-# replace wkthtmltopdf with patched qt version
-if [ "$TARGETARCH" = "arm64" ]; then
-  dpkg -i /tmp/wkhtmltox_*_arm64.deb
-fi
-
-if [ "$TARGETARCH" = "amd64" ]; then
-  dpkg -i /tmp/wkhtmltox_*_amd64.deb
-fi
-
-rm /tmp/wkhtmltox_*.deb
 
 # setup keychain
 mkdir -p /root/.ssh

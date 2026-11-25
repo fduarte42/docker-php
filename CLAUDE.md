@@ -39,20 +39,21 @@ Published to `ghcr.io/fduarte42/docker-php` and `docker.io/fduarte42/docker-php`
 - There is nothing to lint or test. Verification = build the image and run it.
 
 ## Image chain (order matters — each flavor derives FROM the previously built tag)
-`Dockerfile` → `X.Y` and `Dockerfile-slim` → `X.Y-slim` are the only two images built from Debian.
+`Dockerfile` is the only one built from Debian; it produces both **variants** (see `CONTEXT.md`):
+`--target full` → `X.Y`, `--target slim` → `X.Y-slim`. Tag names never contain "full".
 Everything else is `FROM ${BASE_IMAGENAME}:${PHP_VERSION}${FLAVOR}${TAG_SUFFIX}`, so `build-all.sh` must
 keep building base → debug → oci → sourceguardian in that sequence:
 
 | Dockerfile | derives from | produces |
 |---|---|---|
-| `Dockerfile` / `Dockerfile-slim` | `debian:trixie-slim` | `X.Y`, `X.Y-slim` |
+| `Dockerfile` (`--target full`/`slim`) | `debian:trixie-slim` | `X.Y`, `X.Y-slim` |
 | `Dockerfile-debug` | `X.Y` / `X.Y-slim` | `X.Y-debug`, `X.Y-slim-debug` |
 | `Dockerfile-oci` | `X.Y`, `X.Y-debug`, `X.Y-slim`, `X.Y-slim-debug` | `X.Y-oci`, `X.Y-oci-debug`, `X.Y-slim-oci`, `X.Y-slim-oci-debug` |
 | `Dockerfile-sourceguardian` | `X.Y`, `X.Y-oci`, `X.Y-slim`, `X.Y-slim-oci` | `…-sourceguardian` variants (8.2+ only) |
 | `Dockerfile-chartdirector` | `X.Y`, `X.Y-debug` | `X.Y-chartdirector`, `X.Y-chartdirector-debug` (7.4 and 8.2 only, non-slim; the vendored tarballs ship `phpchartdir<ver>.dll` up to 8.3 — nothing for 8.4/8.5) |
 
 Version gates in `build-all.sh` are literal regexes (`8\.2|8\.3|8\.4|8\.5`): **adding a new PHP version means
-editing those regexes**, the `VERSIONS` default, the version branches in `build.sh`/`build-slim.sh`, the gate in
+editing those regexes**, the `VERSIONS` default, the version branches in `build.sh`, the gate in
 `build/build-valkey-glide.sh`, and the CI matrix. Known dead combination: `./build-all.sh -s 7.4` builds nothing (slim block is gated to 8.2+),
 yet the CI matrix still schedules that job.
 
@@ -62,13 +63,18 @@ yet the CI matrix still schedules that job.
   `build <tag> <dockerfile> [extra args]` calls. Also owns the `valkey-glide-builder` registry cache
   (CI only) and, via `-L`, is the single source of truth for the tag list the CI merge job consumes.
 - `build/Dockerfile*` — thin; they copy assets and delegate the real work to a shell script. `Dockerfile`
-  and `Dockerfile-slim` are two-stage: a `valkey-glide-builder` stage compiles the extension, and the
-  final stage bind-mounts the resulting `.so` into the `build.sh` layer. `TARGETARCH`/`PHP_VERSION` are
-  declared once above the first `FROM` and re-declared (bare) in both stages.
-- `build/build.sh`, `build/build-slim.sh` — the actual image construction (APT repos, PHP + extensions,
-  Apache, PHP ini, Composer, permissions). **Near-duplicates that must be kept in sync.** The slim delta is
-  exactly: no chromium, no wkhtmltox `.deb`, no `ttf-mscorefonts-installer`/`xfonts-base`/`xfonts-75dpi`,
-  no `pngquant`.
+  has four stages: `valkey-glide-builder` compiles the extension; `image` runs `build.sh` with `ARG VARIANT`
+  (no default) and bind-mounts both the resulting `.so` and `packages/` (wkhtmltox debs) into that layer;
+  `full` (= `image` + the Puppeteer `ENV`) and `slim` (= `image`) are the final targets. `build-all.sh`
+  passes `--target` and `VARIANT` together via `variant_args` so they cannot disagree.
+  `TARGETARCH`/`PHP_VERSION` are declared once above the first `FROM` and re-declared (bare) in the stages.
+- `build/build.sh` — the actual image construction (APT repos, PHP + extensions, Apache, PHP ini, Composer,
+  permissions) for both variants. It rejects any `VARIANT` other than `full`/`slim`. The whole slim delta
+  sits in two places at the top: the `FULL_PACKAGES` array (`chromium`, `pngquant`,
+  `ttf-mscorefonts-installer`, `xfonts-base`, `xfonts-75dpi`, spliced into the one big `apt-get install`)
+  and the `if [ "$VARIANT" = full ]` block right after it (wkhtmltox `.deb` from the read-only
+  `/tmp/packages` mount; it installs straight into `/usr/local/bin`). The msfonts EULA preseed runs for
+  both; it is a no-op for slim.
 - `build/build-valkey-glide.sh` — runs only in the `valkey-glide-builder` stage; produces
   `/out/valkey_glide.so` (empty `/out` for versions outside `8.2–8.5`). Shared verbatim by both Dockerfiles.
 - `build/add-*.sh` — one per optional flavor: `add-debug.sh` (xdebug), `add-oci.sh` (Oracle Instant Client
@@ -162,7 +168,7 @@ yet the CI matrix still schedules that job.
   - The builder stage must install PHP from the **same** sury source as `build.sh`, otherwise the `.so`
     can miss the final image's Zend ABI. The `php -m | grep -qx valkey_glide` gate in `build.sh` is what
     catches that — keep it.
-  - The install side in `build.sh`/`build-slim.sh` resolves the target directory with
+  - The install side in `build.sh` resolves the target directory with
     `php -r 'echo ini_get("extension_dir");'` (same idiom as `add-chartdirector.sh`), **not**
     `php-config${PHP_VERSION}` — `php${PHP_VERSION}-dev` is never installed in the final image.
   - `libprotobuf-c1` and `libffi8` must stay explicitly installed: the `.so` links against them and
@@ -201,7 +207,7 @@ convention in use). Dependabot branches exist for the deleted `unsupported/*` pu
 ignored. Since any non-`-l` build pushes public tags, confirm before running a publishing build.
 
 ## Do / Don't
-- DO change `build.sh` and `build-slim.sh` together unless the change is intentionally non-slim-only.
+- DO put a full-only addition in `FULL_PACKAGES` / the `VARIANT = full` block of `build.sh`, nowhere else.
 - DO build locally (`-l -p linux/amd64`) and start the container to verify before pushing.
 - DON'T add a package without deciding whether it belongs in slim.
 - DON'T reorder builds in `build-all.sh` so a flavor precedes the tag it derives `FROM`.

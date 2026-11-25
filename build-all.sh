@@ -37,6 +37,11 @@ function build_args() {
   fi
 }
 
+# the base Dockerfile builds either variant; --target and VARIANT must agree, so they come from here only
+function variant_args() {
+  echo "--target $1 --build-arg VARIANT=$1"
+}
+
 # build <tag> <dockerfile> [extra docker buildx args...]
 # $TAG_SUFFIX is applied to the tag; $V is the version currently being built.
 function build() {
@@ -53,9 +58,9 @@ function build() {
   # that stage in the registry so an unchanged build-valkey-glide.sh does not recompile the rust
   # core on every run. Deliberately NOT a whole-image cache: that would freeze the build.sh apt
   # layer and defeat the point of rebuilding weekly. The ref is shared by the slim and non-slim
-  # jobs on purpose - the builder stage is identical in both Dockerfiles, so either may write it.
+  # jobs on purpose - the builder stage does not depend on the variant, so either may write it.
   local CACHE_ARGS=""
-  if [ "$GITHUB_ACTIONS" = "true" ] && [[ $DOCKERFILE =~ ^Dockerfile(-slim)?$ ]]; then
+  if [ "$GITHUB_ACTIONS" = "true" ] && [ "$DOCKERFILE" = Dockerfile ]; then
     local CACHE_REF="ghcr.io/fduarte42/docker-php:cache-valkey-glide-${V}${TAG_SUFFIX}"
     # --pull must match the main build below, otherwise the two can resolve different
     # debian:trixie-slim digests and the builder stage misses the cache it just wrote
@@ -141,7 +146,7 @@ for V in $VERSIONS; do
     if [[ $V =~ (8\.2|8\.3|8\.4|8\.5) ]]; then
       if [ "$BUILD_SLIM" = true ]; then
         # slim version
-        build "$V-slim"                     Dockerfile-slim
+        build "$V-slim"                     Dockerfile $(variant_args slim)
         build "$V-slim-debug"               Dockerfile-debug --build-arg FLAVOR="-slim"
 
         # slim oracle version
@@ -160,7 +165,7 @@ for V in $VERSIONS; do
 
     if [ "$BUILD_NONE_SLIM" = true ]; then
       # normal version
-      build "$V"                            Dockerfile
+      build "$V"                            Dockerfile $(variant_args full)
       build "$V-debug"                      Dockerfile-debug
 
       # oracle
