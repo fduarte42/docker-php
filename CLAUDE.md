@@ -126,8 +126,9 @@ next to their `apt-get` on purpose, not in the table), and adding it to `WEEKLY`
   per-process timeout — `8.3-slim`/`8.5-slim` failed on it flakily (run `33710365591`). Native arm64
   removes both problems. Byproducts now public in both registries: per-arch `…-amd64`/`…-arm64` tags
   and `cache-valkey-glide-<version>-<arch>`. Nothing consumes them; they are safe to prune.
-- `repo.md` — longer prose overview. Partly stale: the `unsupported/` legacy-version tree it describes was
-  deleted (`80a703d`), and its `build-all.sh` usage predates the option flags. Prefer this file / the sources.
+- `repo.md` — the overview for people: versions/variants/flavors table, what is in the image, how to run
+  it (consumer-facing side of the runtime contract), build and CI in brief. Keep it in step when the
+  version table, schedules or contract change; internals belong here, not there.
 
 ## Runtime contract of the images (don't break these for consumers)
 Executable form: `verify-image.sh`. Keep the two in step.
@@ -214,9 +215,8 @@ Executable form: `verify-image.sh`. Keep the two in step.
   Preserve that; image size is a goal.
 - Deliberate security choices — do not "fix" them back: ghostscript is purged (ImageMagick attack surface,
   `3e790ef`), `display_errors=off` + `log_errors=on`, `ServerTokens Prod` / `ServerSignature Off` /
-  `TraceEnable Off`, directory listing off, `javascript-common` conf disabled. (`build.sh` also purges python3, but that is
-  dead: the NodeSource `nodejs` package depends on `python3`, so the main `apt-get install` brings it
-  back; `verify-image.sh` does not check it.)
+  `TraceEnable Off`, directory listing off, `javascript-common` conf disabled. python3 is **not** removed: the NodeSource
+  `nodejs` package depends on it (an old `apt-get purge python3` before the install was dead and is gone).
 - PHP 5.6 builds only the non-slim chain (`5.6`, `-debug`, `-oci`, `-oci-debug`), like 7.4. Its deltas, all
   `(5\.6)` branches: no `decimal`/`http` packages, Composer pinned to the 2.2 LTS channel, no psalm /
   composer-require-checker, xdebug 2 `remote_*` settings in `add-debug.sh`, oci8 `2.0.12`.

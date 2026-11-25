@@ -38,7 +38,6 @@ curl -fsSL https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor -o /usr/shar
 echo "deb [signed-by=/usr/share/keyrings/yarn.gpg] https://dl.yarnpkg.com/debian stable main" | tee /etc/apt/sources.list.d/yarn.list
 
 apt-get update
-apt-get remove -y --purge python3 python3-minimal python3.*
 apt-get upgrade -y
 
 # harmless for slim, which never installs the package
