@@ -116,7 +116,9 @@ jobs:
           ARCH: ${{ matrix.arch }}
         run: |
           if [ "$VARIANT" = "slim" ]; then FLAG=-s; else FLAG=-n; fi
-          ./build-all.sh "$FLAG" -p "linux/$ARCH" -t "-$ARCH" "$PHPV"
+          # -V runs verify-image.sh on every tag as it is pushed; a failure fails the job, so merge never
+          # moves the public tag. Each runner is native to its arch, so both arches get verified.
+          ./build-all.sh -V "$FLAG" -p "linux/$ARCH" -t "-$ARCH" "$PHPV"
 
   # Combines ...:TAG-amd64 and ...:TAG-arm64 into the real multi-arch ...:TAG. The tag list comes
   # from build-all.sh -L so the flavor matrix is not duplicated here.

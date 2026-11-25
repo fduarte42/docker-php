@@ -19,39 +19,12 @@ LOCAL_BUILD=false
 TAG_SUFFIX=""
 LIST_ONLY=false
 MATRIX_ONLY=false
+VERIFY=false
+# absolute, because the build loop runs from build/
+ROOT=$(cd "$(dirname "$0")" && pwd)
 
-# What each PHP version gets - the only place these per-version gates live. The build loop, the
-# valkey-glide builder stage (via --build-arg VALKEY_GLIDE) and the CI matrix (-M) all ask has().
-# default: built when no versions are given. slim: has the slim variant (and its flavors).
-# Package differences between versions are not in here - they stay next to their apt-get in build.sh.
-#         default  slim  sourceguardian  chartdirector  valkey-glide
-VERSION_TABLE="
-5.6       -        -     -               -              -
-7.4       -        -     -               yes            -
-8.2       yes      yes   yes             yes            yes
-8.3       yes      yes   yes             -              yes
-8.4       yes      yes   yes             -              yes
-8.5       yes      yes   yes             -              yes
-"
-FEATURES="default slim sourceguardian chartdirector valkey-glide"
-
-# has <version> <feature> - succeeds if VERSION_TABLE marks <feature> for <version>
-function has() {
-  local COL=2 F
-  for F in $FEATURES; do
-    [ "$F" = "$2" ] && break
-    COL=$((COL + 1))
-  done
-  if [ "$F" != "$2" ]; then
-    echo "has: unknown feature '$2'" >&2
-    exit 1
-  fi
-  awk -v v="$1" -v c="$COL" '$1 == v && $c == "yes" { ok = 1 } END { exit !ok }' <<< "$VERSION_TABLE"
-}
-
-function known_versions() {
-  awk 'NF { print $1 }' <<< "$VERSION_TABLE"
-}
+# VERSION_TABLE, has() and known_versions() - what each PHP version gets
+source "$ROOT/versions.sh"
 
 function tag_args() {
   local TAG="$1$TAG_SUFFIX"
@@ -116,9 +89,14 @@ function build() {
     --build-arg PHP_VERSION="$V" \
     --build-arg TAG_SUFFIX="$TAG_SUFFIX" \
     "$@" -f "$DOCKERFILE" $(tag_args "$TAG") .
+
+  # right after the tag, so a broken base stops the run before its flavors are built FROM it
+  if [ "$VERIFY" = true ]; then
+    "$ROOT/verify-image.sh" "$BASE_IMAGENAME:$TAG$TAG_SUFFIX" "$TAG"
+  fi
 }
 
-while getopts "p:t:slnLMh" opt; do
+while getopts "p:t:slnLMVh" opt; do
   case $opt in
     p)
       PLATFORMS="$OPTARG"
@@ -143,6 +121,9 @@ while getopts "p:t:slnLMh" opt; do
     M)
       MATRIX_ONLY=true
       ;;
+    V)
+      VERIFY=true
+      ;;
     h)
       echo "Usage: $0 [OPTIONS] [PHP_VERSIONS...]"
       echo ""
@@ -155,6 +136,8 @@ while getopts "p:t:slnLMh" opt; do
       echo "  -L              List the tags that would be built (unsuffixed) and exit"
       echo "  -M              Print the CI job matrix as JSON ([{php_version, variant}], only"
       echo "                  combinations that build something) and exit"
+      echo "  -V              Run verify-image.sh on every tag right after building it (stops on"
+      echo "                  the first failure; the platform must be this host's architecture)"
       echo "  -h              Show this help message"
       echo ""
       echo "EXAMPLES:"
@@ -167,6 +150,7 @@ while getopts "p:t:slnLMh" opt; do
       echo "  $0 -p linux/arm64 -t -arm64 8.4  # Build 8.4 arm64 only, into ...:8.4-arm64 etc"
       echo "  $0 -L -n 8.4                     # Print the full-variant tags for 8.4, build nothing"
       echo "  $0 -M 7.4 8.2                    # Print the CI matrix for 7.4 and 8.2"
+      echo "  $0 -l -V -p linux/amd64 -s 8.4   # Build slim 8.4 locally and verify each tag"
       exit 0
       ;;
     *)
@@ -186,7 +170,7 @@ fi
 
 for V in $VERSIONS; do
   if ! known_versions | grep -qxF "$V"; then
-    echo "Unknown PHP version '$V' - add it to VERSION_TABLE in $0 (known: $(known_versions | xargs))" >&2
+    echo "Unknown PHP version '$V' - add it to VERSION_TABLE in versions.sh (known: $(known_versions | xargs))" >&2
     exit 1
   fi
 done

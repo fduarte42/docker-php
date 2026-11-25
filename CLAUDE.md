@@ -23,6 +23,8 @@ Published to `ghcr.io/fduarte42/docker-php` and `docker.io/fduarte42/docker-php`
 ./build-all.sh -n 8.4                  # skip slim flavors
 ./build-all.sh -L -n 8.4               # print the tags it WOULD build, touch nothing
 ./build-all.sh -M 7.4 8.2              # print the CI job matrix (JSON), touch nothing
+./build-all.sh -l -V -p linux/amd64 -s 8.4    # build locally and verify every tag right after it is built
+./verify-image.sh fduarte42/docker-php:8.4-slim 8.4-slim   # check one image against the runtime contract
 ./build-all.sh -p linux/arm64 -t -arm64 8.4   # single arch into ...:8.4-arm64 etc (what CI does)
 ```
 - No argument ⇒ the versions marked `default` in `VERSION_TABLE` (`8.2 8.3 8.4 8.5`; **not** 5.6/7.4, which
@@ -38,7 +40,15 @@ Published to `ghcr.io/fduarte42/docker-php` and `docker.io/fduarte42/docker-php`
   goes to stderr specifically so they stay pipeable. Keep it that way; CI parses both.
 - `-t SUFFIX` appends to every tag *and* is passed as `--build-arg TAG_SUFFIX`, which the derived
   Dockerfiles splice into their `FROM`. That is what lets one arch build in isolation.
-- There is nothing to lint or test. Verification = build the image and run it.
+- Verification = `verify-image.sh <image-ref> <tag>`: the runtime contract below as checks (config, env,
+  `php -m` in cli and fpm, ini values, tz/locales, sudoers, composer tools, pdftk, the uid remap, and a live
+  boot of `CMD` with a request through apache → php-fpm and a mounted `zzz-custom.ini`). Expectations come
+  from the tag name (variant, flavors), a required-module list with the `build.sh` version deltas, and the
+  table (valkey_glide). Extra modules are fine; a missing one fails. It runs the image, so it refuses an
+  image of another architecture. `-V` calls it per tag inside `build()`; CI uses `-V`, so a failing image
+  fails its build job and `merge` never moves the public tag (the per-arch tag is already pushed by then).
+  With `-l`, only the base tags verify meaningfully: their flavors re-pull the base from the registry.
+  When you change the contract, change `verify-image.sh` with it. Nothing else to lint or test.
 
 ## Image chain (order matters — each flavor derives FROM the previously built tag)
 `Dockerfile` is the only one built from Debian; it produces both **variants** (see `CONTEXT.md`):
@@ -54,10 +64,10 @@ keep building base → debug → oci → sourceguardian in that sequence:
 | `Dockerfile-sourceguardian` | `X.Y`, `X.Y-oci`, `X.Y-slim`, `X.Y-slim-oci` | `…-sourceguardian` variants (8.2+ only) |
 | `Dockerfile-chartdirector` | `X.Y`, `X.Y-debug` | `X.Y-chartdirector`, `X.Y-chartdirector-debug` (7.4 and 8.2 only, non-slim; the vendored tarballs ship `phpchartdir<ver>.dll` up to 8.3 — nothing for 8.4/8.5) |
 
-Which images a version gets is decided in one place: `VERSION_TABLE` at the top of `build-all.sh` (columns
+Which images a version gets is decided in one place: `VERSION_TABLE` in `versions.sh` (columns
 `default`, `slim`, `sourceguardian`, `chartdirector`, `valkey-glide`), queried with `has <version> <feature>`.
 The build loop, the valkey-glide builder stage (`--build-arg VALKEY_GLIDE=yes|no`) and the CI matrix (`-M`)
-all read it. **Adding a new PHP version means** a table row, its package branches in `build.sh` (those stay
+and `verify-image.sh` all read it (both `source` the file). **Adding a new PHP version means** a table row, its package branches in `build.sh` (those stay
 next to their `apt-get` on purpose, not in the table), and adding it to `WEEKLY` or `MONTHLY` in the workflow's
 `prepare` step.
 
@@ -107,7 +117,7 @@ next to their `apt-get` on purpose, not in the table), and adding it to `WEEKLY`
     fan-out.
   - `build` — matrix of `job` (from `prepare`) × `amd64|arm64`, `fail-fast: false`, 2G swap, logs into
     both registries (`CR_PAT`, `DOCKERHUB_USER`, `DOCKERHUB_PAT`), then
-    `./build-all.sh -s|-n -p linux/<arch> -t -<arch> <version>`. **arm64 runs on `ubuntu-24.04-arm`**
+    `./build-all.sh -V -s|-n -p linux/<arch> -t -<arch> <version>`. **arm64 runs on `ubuntu-24.04-arm`**
     (free for public repos), not under QEMU — `include:` maps `arch` → `runner`.
   - `merge` — `docker buildx imagetools create` per tag from `build-all.sh -L`, combining
     `TAG-amd64` + `TAG-arm64` into `TAG`, once per registry so no blobs are copied between them.
@@ -120,6 +130,7 @@ next to their `apt-get` on purpose, not in the table), and adding it to `WEEKLY`
   deleted (`80a703d`), and its `build-all.sh` usage predates the option flags. Prefer this file / the sources.
 
 ## Runtime contract of the images (don't break these for consumers)
+Executable form: `verify-image.sh`. Keep the two in step.
 - `WORKDIR /var/www/html`, `EXPOSE 80`, `CMD` = supervisord with `/etc/supervisor/conf.d/supervisord.conf`.
 - Env: `DOCUMENT_ROOT=/` (spliced into the Apache vhost path), `PHP_GC_MAX_LIFETIME=1440`,
   `COMPOSER_HOME=/composer`, `COMPOSER_ALLOW_SUPERUSER=1`, `PATH` includes `/composer/vendor/bin`.
@@ -203,7 +214,9 @@ next to their `apt-get` on purpose, not in the table), and adding it to `WEEKLY`
   Preserve that; image size is a goal.
 - Deliberate security choices — do not "fix" them back: ghostscript is purged (ImageMagick attack surface,
   `3e790ef`), `display_errors=off` + `log_errors=on`, `ServerTokens Prod` / `ServerSignature Off` /
-  `TraceEnable Off`, directory listing off, python3 purged, `javascript-common` conf disabled.
+  `TraceEnable Off`, directory listing off, `javascript-common` conf disabled. (`build.sh` also purges python3, but that is
+  dead: the NodeSource `nodejs` package depends on `python3`, so the main `apt-get install` brings it
+  back; `verify-image.sh` does not check it.)
 - PHP 5.6 builds only the non-slim chain (`5.6`, `-debug`, `-oci`, `-oci-debug`), like 7.4. Its deltas, all
   `(5\.6)` branches: no `decimal`/`http` packages, Composer pinned to the 2.2 LTS channel, no psalm /
   composer-require-checker, xdebug 2 `remote_*` settings in `add-debug.sh`, oci8 `2.0.12`.
@@ -214,7 +227,10 @@ next to their `apt-get` on purpose, not in the table), and adding it to `WEEKLY`
   flatten. Unsupported operations exit 1 with a message. It runs on every image, so it **must stay PHP 5.6
   compatible** (`docker run --rm -v $PWD/build/scripts:/s php:5.6-cli php -l /s/pdftk`). `encrypt_128bit` maps
   to AES-128, not RC4: qpdf 12 refuses RC4 as weak crypto.
-- Timezone/locale are fixed: `Europe/Berlin`, locales `en_US en_GB fr_FR es_ES pt_PT de_DE`.
+- Timezone/locale are fixed: `Europe/Berlin` for the OS (`/etc/localtime` — what `date`, cron and syslog use)
+  and PHP (`date.timezone`), locales `en_US en_GB fr_FR es_ES pt_PT de_DE`. On trixie `dpkg-reconfigure
+  tzdata` derives `/etc/timezone` from the `/etc/localtime` symlink, so `build.sh` sets the symlink; images
+  built before that fix run the OS in UTC.
 
 ## Branching
 Default branch: `master`; history is committed straight to it (only remote-tracking merges, no feature-branch

@@ -265,7 +265,9 @@ chmod +x /usr/sbin/wait-for-it.sh
 # ssmtp
 apt-get install -y ssmtp
 
-# Set the time zone to the local time zone
+# Set the time zone to the local time zone. dpkg-reconfigure takes it from /etc/localtime and rewrites
+# /etc/timezone from that, so the symlink is what has to change (writing /etc/timezone alone left UTC).
+ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime
 echo "Europe/Berlin" > /etc/timezone && dpkg-reconfigure --frontend noninteractive tzdata
 echo "date.timezone = Europe/Berlin" > /etc/php/${PHP_VERSION}/mods-available/timezone.ini
 phpenmod timezone
