@@ -41,14 +41,15 @@ Published to `ghcr.io/fduarte42/docker-php` and `docker.io/fduarte42/docker-php`
 - `-t SUFFIX` appends to every tag *and* is passed as `--build-arg TAG_SUFFIX`, which the derived
   Dockerfiles splice into their `FROM`. That is what lets one arch build in isolation.
 - Verification = `verify-image.sh <image-ref> <tag>`: the runtime contract below as checks (config, env,
-  `php -m` in cli and fpm, ini values, tz/locales, sudoers, composer tools, pdftk, the uid remap, and a live
-  boot of `CMD` with a request through apache → php-fpm and a mounted `zzz-custom.ini`). Expectations come
-  from the tag name (variant, flavors), a required-module list with the `build.sh` version deltas, and the
-  table (valkey_glide). Extra modules are fine; a missing one fails. It runs the image, so it refuses an
-  image of another architecture. `-V` calls it per tag inside `build()`; CI uses `-V`, so a failing image
-  fails its build job and `merge` never moves the public tag (the per-arch tag is already pushed by then).
-  With `-l`, only the base tags verify meaningfully: their flavors re-pull the base from the registry.
-  When you change the contract, change `verify-image.sh` with it. Nothing else to lint or test.
+  `php -m` in cli and fpm, ini values, tz/locales, sudoers, composer tools, pdftk, ImageMagick formats, the
+  uid remap, and a live boot of `CMD` with a request through apache → php-fpm, a mounted `zzz-custom.ini` and
+  a forced logrotate). Expectations come from the tag name (variant, flavors), a required-module list with the
+  `build.sh` version deltas, and the table (valkey_glide). Extra modules are fine; a missing one fails. It
+  runs the image, so it refuses an image of another architecture. `-V` calls it per tag inside `build()`; CI
+  uses `-V`, so a failing image fails its build job and `merge` never moves the public tag (the per-arch tag
+  is already pushed by then). With `-l`, only the base tags verify meaningfully: their flavors re-pull the
+  base from the registry. When you change the contract, change `verify-image.sh` with it. Nothing else to lint
+  or test.
 
 ## Image chain (order matters — each flavor derives FROM the previously built tag)
 `Dockerfile` is the only one built from Debian; it produces both **variants** (see `CONTEXT.md`):
@@ -151,6 +152,14 @@ Executable form: `verify-image.sh`. Keep the two in step.
   (which chowns the home dir recursively, into a `/var/www/html` bind mount). Ids are switched last so the
   remap is idempotent and a failed run retries on restart. Needs root; no-op under `--user` or a consumer
   `ENTRYPOINT` override.
+- `logrotate` is installed by name (it used to come only as a recommend of rsyslog/cron): cron's
+  `cron.daily` rotates the rsyslog, apache2 and php-fpm logs under `/var/log`. The packaged postrotate hooks
+  of rsyslog (signals only under systemd) and apache2 (`invoke-rc.d`, denied by the base image's
+  `policy-rc.d`) never reached the daemons, which kept writing to the rotated — later deleted — file. So
+  `build.sh` `dpkg-divert`s `/etc/logrotate.d/{rsyslog,apache2}` to `*.dpkg-dist` (skipped by logrotate,
+  and no conffile prompt on a package upgrade) and writes copies with `pkill -HUP -x rsyslogd` /
+  `/etc/init.d/apache2 reload` as the hook (php-fpm's own hook works as packaged). `verify-image.sh` forces
+  a rotation on the live container and fails if any process still holds a rotated `/var/log` file open.
 - `cron-foreground` installs `/tmp/crontab` for `www-data` and dumps the env to `/etc/environment` so cron
   jobs see it.
 - `www-data` (uid 33) has passwordless sudo for exactly two commands: `/etc/init.d/apache2 reload` and
@@ -211,6 +220,18 @@ Executable form: `verify-image.sh`. Keep the two in step.
   and are bind-mounted at `/tmp/vendor` on the script's `RUN` (copy `Dockerfile-chartdirector`), not `COPY`ed.
   **`TAG_SUFFIX` is not optional** — omit it and the flavor will pull the multi-arch base tag from the previous run instead of
   the per-arch tag this run just pushed.
+- Every `apt-get install` / `apt install` in a script that reaches an image passes `--no-install-recommends`
+  (per call, not an `apt.conf.d` entry, so images built FROM ours keep apt's defaults). The recommends of
+  `ffmpeg`/`imagemagick` alone were mesa/vulkan/LLVM, GTK, VA drivers and speech data (~300MB). A package that
+  is actually needed is installed by name: `logrotate`, `make` in `add-oci.sh` (the oci8
+  `phpize`/`make install` build; removed again with php-dev), and for ImageMagick's full format set
+  `libmagickcore-7.q16-10-extra` (SVG/SVGZ/MSVG, PANGO, DJVU, EXR, WMF/WMZ) plus
+  `libheif-plugin-aomenc`/`-x265` (AVIF/HEIC/HEIF writing) — `verify-image.sh` checks those formats. What
+  stays gone on purpose: the VA-API/VDPAU/Vulkan drivers for ffmpeg hwaccel and the pocketsphinx English model
+  for its `asr` filter. Also gone, judged unneeded: `less` and `patch` (git), `libsasl2-modules` (Cyrus SASL
+  mechanisms for curl/ldap; ssmtp does its own SMTP AUTH), `fonts-liberation` and `chromium-sandbox` (the
+  setuid sandbox helper; chromium in a container normally runs with `--no-sandbox`), `poppler-data` (CJK
+  encodings for poppler-utils) and ImageMagick's recommended default fonts (fontconfig still resolves fonts).
 - Every layer script ends with `apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*`.
   Preserve that; image size is a goal.
 - Deliberate security choices — do not "fix" them back: ghostscript is purged (ImageMagick attack surface,

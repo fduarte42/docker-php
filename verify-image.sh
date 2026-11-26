@@ -119,6 +119,18 @@ else
   has_cmd wkhtmltopdf && fail "wkhtmltopdf present in slim" || ok "wkhtmltopdf absent"
 fi
 
+# cron runs it daily for the rsyslog, apache2 and php-fpm logs under /var/log, which grow unbounded without it
+[ -x /etc/cron.daily/logrotate ] && has_cmd logrotate && ok "logrotate in cron.daily" || fail "logrotate missing"
+
+# ImageMagick formats that come from packages installed by name (libmagickcore-7.q16-10-extra, the libheif
+# encoder plugins) rather than as recommends; NAME:r needs read, NAME:rw read and write (`convert -list format` mode)
+FORMATS=$(convert -list format | awk '/^ *[A-Z0-9-]+\*? +[A-Z0-9-]+ +[r-][w-][+-]/ { sub(/\*$/, "", $1); print $1 ":" $3 }')
+MISSING=""
+for F in SVG:rw SVGZ:rw MSVG:rw PANGO:r DJVU:r EXR:rw WMF:r WMZ:r AVIF:rw HEIC:rw HEIF:rw; do
+  grep -q "^$F" <<< "$FORMATS" || MISSING="$MISSING $F"
+done
+expect "imagemagick formats (missing)" "" "${MISSING# }"
+
 # deliberate security choice (ImageMagick attack surface)
 if dpkg -s ghostscript > /dev/null 2>&1 || has_cmd gs; then fail "ghostscript present"; else ok "ghostscript absent"; fi
 
@@ -223,6 +235,34 @@ for P in supervisord apache2 php-fpm cron rsyslogd; do
   grep -qxF "$P" <<< "$RUNNING" || MISSING="$MISSING $P"
 done
 expect "supervised processes (missing)" "" "${MISSING# }"
+
+# log rotation end to end: after a forced rotation every daemon must have let go of the rotated files and write
+# to the new ones. Neither packaged hook reached its daemon here (rsyslog's only signals under systemd, apache's
+# goes through the denied invoke-rc.d); an open fd on a rotated or deleted /var/log file is the symptom.
+if [ "$CODE" = 200 ]; then
+  ROTATE_OUT=$(docker exec "$CID" logrotate -f /etc/logrotate.conf 2>&1)
+  expect "logrotate -f exit status" 0 "$?"
+  [ -n "$ROTATE_OUT" ] && echo "$ROTATE_OUT" | sed 's/^/    logrotate: /'
+  expect "logrotate rotated syslog, access.log, fpm log" yes \
+    "$(in_ct bash -c "[ -e /var/log/syslog.1 ] && [ -e /var/log/apache2/access.log.1 ] && [ -e /var/log/php${PV}-fpm.log.1 ] && echo yes")"
+  STALE=""
+  for _ in $(seq 20); do
+    STALE=$(in_ct bash -c 'find /proc/[0-9]*/fd -lname "/var/log/*" -printf "%l\n" 2>/dev/null' \
+      | grep -E '\.[0-9]+(\.gz)?$|\(deleted\)$' | sort -u | tr '\n' ' ')
+    [ -z "$STALE" ] && break
+    sleep 0.5
+  done
+  expect "logrotate: rotated logs still held open" "" "${STALE% }"
+  in_ct logger -t verify-image after-rotate
+  in_ct curl -s -o /dev/null 'http://localhost/__verify.php?after-rotate'
+  HITS=""
+  for _ in $(seq 20); do
+    HITS=$(in_ct grep -c 'verify-image: after-rotate' /var/log/syslog):$(in_ct grep -c 'after-rotate' /var/log/apache2/access.log)
+    [ "$HITS" = 1:1 ] && break
+    sleep 0.5
+  done
+  expect "logrotate: rsyslog:apache write to the new files" 1:1 "$HITS"
+fi
 
 if [ "$FAILED" -gt 0 ]; then
   echo "verify $IMAGE: $FAILED check(s) FAILED"

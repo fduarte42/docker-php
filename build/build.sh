@@ -22,7 +22,12 @@ esac
 sed -i 's/^Components: main$/& contrib/' /etc/apt/sources.list.d/debian.sources
 apt-get update
 
-apt-get -y install apt-transport-https lsb-release ca-certificates curl gnupg
+# every install here and in the add-*.sh flavor scripts passes --no-install-recommends: the recommends of
+# ffmpeg/imagemagick alone pulled in mesa/vulkan/LLVM, GTK, VA drivers and speech data. A package that is
+# actually needed goes in by name (logrotate; ImageMagick's SVG/DJVU/EXR/WMF coders from
+# libmagickcore-7.q16-10-extra and HEIC/AVIF writing from the libheif encoder plugins). Per call rather
+# than an apt.conf.d entry, so images built FROM ours keep apt's defaults.
+apt-get install -y --no-install-recommends apt-transport-https lsb-release ca-certificates curl gnupg
 mkdir -p /etc/apt/keyrings
 
 # Add php APT repo
@@ -44,7 +49,7 @@ apt-get upgrade -y
 echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula \
     select true | debconf-set-selections
 
-apt-get install -y \
+apt-get install -y --no-install-recommends \
   acl \
   apache2 \
   bzip2 \
@@ -56,8 +61,12 @@ apt-get install -y \
   keychain \
   libapache2-mod-fcgid \
   locales \
+  logrotate \
   htop \
   imagemagick \
+  libheif-plugin-aomenc \
+  libheif-plugin-x265 \
+  libmagickcore-7.q16-10-extra \
   javascript-common \
   msmtp \
   nano-tiny \
@@ -105,32 +114,32 @@ fi
 
 # no decimal package for 5.6
 if [[ ! $PHP_VERSION =~ (5\.6) ]]; then
-  apt-get install -y php${PHP_VERSION}-decimal
+  apt-get install -y --no-install-recommends php${PHP_VERSION}-decimal
 fi
 
 if [[ $PHP_VERSION =~ (5\.6) ]]; then
   # no sury http package for 5.6
-  apt-get install -y \
+  apt-get install -y --no-install-recommends \
     php${PHP_VERSION}-opcache \
     php${PHP_VERSION}-memcached \
     php${PHP_VERSION}-raphf \
     php${PHP_VERSION}-propro
 elif [[ $PHP_VERSION =~ (7\.4) ]]; then
-  apt-get install -y \
+  apt-get install -y --no-install-recommends \
     php${PHP_VERSION}-opcache \
     php${PHP_VERSION}-memcached \
     php${PHP_VERSION}-http \
     php${PHP_VERSION}-raphf \
     php${PHP_VERSION}-propro
 elif [[ $PHP_VERSION =~ (8\.2|8\.3|8\.4) ]]; then
-  apt-get install -y \
+  apt-get install -y --no-install-recommends \
     php${PHP_VERSION}-opcache \
     php${PHP_VERSION}-memcached \
     php${PHP_VERSION}-http \
     php${PHP_VERSION}-raphf
 elif [[ $PHP_VERSION =~ (8\.5|8\.6) ]]; then
   # no opcache package - it is built into php 8.5+
-  apt-get install -y \
+  apt-get install -y --no-install-recommends \
     php${PHP_VERSION}-memcached \
     php${PHP_VERSION}-http \
     php${PHP_VERSION}-raphf
@@ -148,11 +157,11 @@ ln -s /usr/bin/php /usr/local/bin/php
 
 # apcu
 if [[ $PHP_VERSION =~ (7\.4) ]]; then
-  apt-get install -y \
+  apt-get install -y --no-install-recommends \
     php${PHP_VERSION}-apcu \
     php${PHP_VERSION}-apcu-bc
 else
-  apt-get install -y \
+  apt-get install -y --no-install-recommends \
     php${PHP_VERSION}-apcu
 fi
 
@@ -161,7 +170,7 @@ fi
 # The mount is empty for PHP versions that have no valkey_glide build.
 if [ -f /tmp/valkey-glide/valkey_glide.so ]; then
   # the .so links against these - installed explicitly so autoremove keeps them
-  apt-get install -y libprotobuf-c1 libffi8
+  apt-get install -y --no-install-recommends libprotobuf-c1 libffi8
 
   EXTENSION_DIR=$(php -r 'echo ini_get("extension_dir");')
   install -m 644 /tmp/valkey-glide/valkey_glide.so "${EXTENSION_DIR}/valkey_glide.so"
@@ -262,7 +271,7 @@ curl -sL https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for
 chmod +x /usr/sbin/wait-for-it.sh
 
 # ssmtp
-apt-get install -y ssmtp
+apt-get install -y --no-install-recommends ssmtp
 
 # Set the time zone to the local time zone. dpkg-reconfigure takes it from /etc/localtime and rewrites
 # /etc/timezone from that, so the symlink is what has to change (writing /etc/timezone alone left UTC).
@@ -350,6 +359,20 @@ chmod 744 /var/www/.config
 
 # rsyslog
 sed -i "s/module(load=\"imklog\")/#module(load=\"imklog\")/" /etc/rsyslog.conf
+
+# logrotate (daily from cron): the packaged postrotate hooks never reach the daemons here - rsyslog's only
+# signals under systemd, apache's goes through invoke-rc.d, which the base image's policy-rc.d denies - so
+# both kept writing to the rotated file. The packaged configs are diverted to *.dpkg-dist (an extension
+# logrotate skips) rather than edited, so a later package upgrade never stops at a conffile prompt.
+for CONF in rsyslog apache2; do
+  dpkg-divert --local --rename --divert /etc/logrotate.d/${CONF}.dpkg-dist --add /etc/logrotate.d/${CONF}
+done
+sed 's!/usr/lib/rsyslog/rsyslog-rotate!pkill -HUP -x rsyslogd || true!' \
+  /etc/logrotate.d/rsyslog.dpkg-dist > /etc/logrotate.d/rsyslog
+sed 's!invoke-rc.d apache2 reload!/etc/init.d/apache2 reload!' \
+  /etc/logrotate.d/apache2.dpkg-dist > /etc/logrotate.d/apache2
+grep -q 'pkill -HUP -x rsyslogd' /etc/logrotate.d/rsyslog
+grep -q '/etc/init.d/apache2 reload' /etc/logrotate.d/apache2
 
 # cleanup
 apt-get clean

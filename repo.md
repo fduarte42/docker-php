@@ -47,7 +47,11 @@ The per-version gates live in `VERSION_TABLE` in `versions.sh`.
 
 - PHP-FPM + CLI from the sury.org packages, served by Apache. Debian trixie-slim base.
 - supervisord as the process manager (not systemd). It runs apache2, php-fpm, cron, rsyslog and the
-  one-shot `docker-php-init`.
+  one-shot `docker-php-init`. Logs under `/var/log` (syslog, apache2, php-fpm) are rotated daily by
+  logrotate (via cron), and the daemons reopen their files afterwards.
+- ffmpeg and ImageMagick, the latter with SVG, PANGO, DJVU, EXR, WMF and AVIF/HEIC (read and write).
+  Debian packages are installed without their recommends, so there are no GPU drivers (no ffmpeg
+  hardware acceleration) and no pocketsphinx model for ffmpeg's `asr` filter.
 - Extensions: apcu, bcmath, bz2, curl, gd, igbinary, imagick, imap, intl, ldap, mbstring, memcached,
   msgpack, mysqli, opcache, pdo_mysql, pdo_pgsql, pdo_sqlite, pgsql, raphf, redis, soap, sqlite3, ssh2,
   xml, xsl and zip. Version-specific additions:

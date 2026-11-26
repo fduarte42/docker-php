@@ -3,7 +3,7 @@ set -e
 
 # XDEBUG
 apt update
-apt install -y php${PHP_VERSION}-xdebug
+apt install -y --no-install-recommends php${PHP_VERSION}-xdebug
 if [[ $PHP_VERSION =~ (5\.6) ]]; then
   # PHP 5.6 only has xdebug 2, which uses the remote_* settings (trigger mode is its default)
   echo "xdebug.remote_enable=1" > /etc/php/${PHP_VERSION}/mods-available/xdebug-config.ini
@@ -19,9 +19,9 @@ echo "xdebug.idekey=PHPSTORM" >> /etc/php/${PHP_VERSION}/mods-available/xdebug-c
 echo "display_errors=on" >> /etc/php/${PHP_VERSION}/mods-available/xdebug-config.ini
 phpenmod xdebug-config
 
-#apt install -y php${PHP_VERSION}-uopz
+#apt install -y --no-install-recommends php${PHP_VERSION}-uopz
 #phpenmod uopz
-#apt install -y php${PHP_VERSION}-pcov
+#apt install -y --no-install-recommends php${PHP_VERSION}-pcov
 #phpenmod pcov
 
 # cleanup

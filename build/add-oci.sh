@@ -2,7 +2,7 @@
 set -e
 
 apt update
-apt install -y libaio1t64
+apt install -y --no-install-recommends libaio1t64
 # libaio1 compatability
 for d in /usr/lib/*-linux-gnu; do
   if [ -e "$d/libaio.so.1t64" ] && [ ! -e "$d/libaio.so.1" ]; then
@@ -28,7 +28,8 @@ fi
 echo /opt/oracle/instantclient >> /etc/ld.so.conf
 ldconfig
 
-apt install -y php${PHP_VERSION}-dev
+# make only ever came in as a recommend; gcc arrives through libtool, a dependency of php-dev
+apt install -y --no-install-recommends php${PHP_VERSION}-dev make
 
 if [[ $PHP_VERSION =~ (5\.6) ]]; then
   OCI_VERSION=2.0.12
@@ -59,7 +60,7 @@ rm -rf /tmp/oci8-${OCI_VERSION}
 echo "extension=oci8.so" > /etc/php/${PHP_VERSION}/mods-available/oci8.ini
 phpenmod oci8
 
-apt remove -y php${PHP_VERSION}-dev
+apt remove -y php${PHP_VERSION}-dev make
 
 # cleanup
 apt clean
