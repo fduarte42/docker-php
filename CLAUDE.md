@@ -226,12 +226,15 @@ Executable form: `verify-image.sh`. Keep the two in step.
   is actually needed is installed by name: `logrotate`, `make` in `add-oci.sh` (the oci8
   `phpize`/`make install` build; removed again with php-dev), and for ImageMagick's full format set
   `libmagickcore-7.q16-10-extra` (SVG/SVGZ/MSVG, PANGO, DJVU, EXR, WMF/WMZ) plus
-  `libheif-plugin-aomenc`/`-x265` (AVIF/HEIC/HEIF writing) — `verify-image.sh` checks those formats. What
+  `libheif-plugin-aomenc`/`-x265` (AVIF/HEIC/HEIF writing) — `verify-image.sh` checks those formats — and
+  `fonts-urw-base35` (an ImageMagick recommend: the clones fontconfig maps
+  Helvetica/Times/Courier/Palatino/Bookman/Symbol/Zapf Dingbats to; without it
+  chromium/wkhtmltopdf/ImageMagick fall back to DejaVu, with other metrics; checked via `fc-match`). What
   stays gone on purpose: the VA-API/VDPAU/Vulkan drivers for ffmpeg hwaccel and the pocketsphinx English model
   for its `asr` filter. Also gone, judged unneeded: `less` and `patch` (git), `libsasl2-modules` (Cyrus SASL
   mechanisms for curl/ldap; ssmtp does its own SMTP AUTH), `fonts-liberation` and `chromium-sandbox` (the
-  setuid sandbox helper; chromium in a container normally runs with `--no-sandbox`), `poppler-data` (CJK
-  encodings for poppler-utils) and ImageMagick's recommended default fonts (fontconfig still resolves fonts).
+  setuid sandbox helper; chromium in a container normally runs with `--no-sandbox`), and `poppler-data` (CJK
+  encodings for poppler-utils). There never was a CJK or emoji font in the images.
 - Every layer script ends with `apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*`.
   Preserve that; image size is a goal.
 - Deliberate security choices — do not "fix" them back: ghostscript is purged (ImageMagick attack surface,

@@ -131,6 +131,11 @@ for F in SVG:rw SVGZ:rw MSVG:rw PANGO:r DJVU:r EXR:rw WMF:r WMZ:r AVIF:rw HEIC:r
 done
 expect "imagemagick formats (missing)" "" "${MISSING# }"
 
+# fonts-urw-base35 (no longer a recommend): pages and images asking for the PostScript base fonts by name get
+# metric-compatible clones instead of DejaVu
+expect "fc-match Helvetica / Palatino / Zapf Dingbats" "Nimbus Sans|P052|D050000L" \
+  "$(for F in Helvetica Palatino 'Zapf Dingbats'; do fc-match -f '%{family[0]}' "$F"; echo; done | paste -sd '|')"
+
 # deliberate security choice (ImageMagick attack surface)
 if dpkg -s ghostscript > /dev/null 2>&1 || has_cmd gs; then fail "ghostscript present"; else ok "ghostscript absent"; fi
 

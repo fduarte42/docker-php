@@ -25,7 +25,9 @@ apt-get update
 # every install here and in the add-*.sh flavor scripts passes --no-install-recommends: the recommends of
 # ffmpeg/imagemagick alone pulled in mesa/vulkan/LLVM, GTK, VA drivers and speech data. A package that is
 # actually needed goes in by name (logrotate; ImageMagick's SVG/DJVU/EXR/WMF coders from
-# libmagickcore-7.q16-10-extra and HEIC/AVIF writing from the libheif encoder plugins). Per call rather
+# libmagickcore-7.q16-10-extra and HEIC/AVIF writing from the libheif encoder plugins; fonts-urw-base35, the
+# metric clones fontconfig maps Helvetica/Times/Courier/Palatino/Symbol/... to for chromium, wkhtmltopdf and
+# ImageMagick). Per call rather
 # than an apt.conf.d entry, so images built FROM ours keep apt's defaults.
 apt-get install -y --no-install-recommends apt-transport-https lsb-release ca-certificates curl gnupg
 mkdir -p /etc/apt/keyrings
@@ -56,6 +58,7 @@ apt-get install -y --no-install-recommends \
   cron \
   curl \
   ffmpeg \
+  fonts-urw-base35 \
   git \
   gnupg \
   keychain \

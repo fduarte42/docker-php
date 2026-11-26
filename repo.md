@@ -52,6 +52,9 @@ The per-version gates live in `VERSION_TABLE` in `versions.sh`.
 - ffmpeg and ImageMagick, the latter with SVG, PANGO, DJVU, EXR, WMF and AVIF/HEIC (read and write).
   Debian packages are installed without their recommends, so there are no GPU drivers (no ffmpeg
   hardware acceleration) and no pocketsphinx model for ffmpeg's `asr` filter.
+- Fonts: DejaVu and the URW clones of the PostScript base fonts (Helvetica, Times, Courier, Palatino, Symbol,
+  …) in every image; full adds the MS core fonts (Arial, Times New Roman, Verdana, …). There are no CJK or emoji
+  fonts.
 - Extensions: apcu, bcmath, bz2, curl, gd, igbinary, imagick, imap, intl, ldap, mbstring, memcached,
   msgpack, mysqli, opcache, pdo_mysql, pdo_pgsql, pdo_sqlite, pgsql, raphf, redis, soap, sqlite3, ssh2,
   xml, xsl and zip. Version-specific additions:
