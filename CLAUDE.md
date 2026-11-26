@@ -106,7 +106,7 @@ next to their `apt-get` on purpose, not in the table), and adding it to `WEEKLY`
   `/tmp/vendor` for the flavor scripts. Scripts pick the file by exact name per `$TARGETARCH` (versions
   included in `add-oci.sh`) — replacing one means updating that script too, and must not try to delete it.
 - `.github/workflows/docker-build.yml` — the only workflow. Two crons: weekly (Thu 00:00 UTC) builds the
-  `WEEKLY` set **8.3, 8.4, 8.5**; monthly (1st, 12:00 UTC) builds the `MONTHLY` set **5.6, 7.4, 8.2**. Both
+  `WEEKLY` set **8.3, 8.4, 8.5, 8.6**; monthly (1st, 12:00 UTC) builds the `MONTHLY` set **5.6, 7.4, 8.2**. Both
   lists live in the `prepare` step; the cron strings there must match the `on.schedule` entries exactly
   (an unmatched schedule fails `prepare` rather than building nothing). `run-name` shows weekly / monthly /
   `dispatch: <input>`. Three jobs:
@@ -159,14 +159,14 @@ Executable form: `verify-image.sh`. Keep the two in step.
   layer export drops ACL xattrs, so published images carry **none**. The docker-plugin project relies on the
   `WWW_DATA_UID`/`WWW_DATA_GID` remap instead of ACLs.
 - Globally installed via Composer in-image: `squizlabs/php_codesniffer`, `maglnet/composer-require-checker`
-  (pinned to `3.8.0` on 7.4), `vimeo/psalm`. These are tools *for consuming projects*, not for this repo.
+  (pinned to `3.8.0` on 7.4, absent on 8.6 until a release allows it), `vimeo/psalm`. These are tools *for consuming projects*, not for this repo.
 
 ## Conventions to follow when editing
 - PHP config goes in `/etc/php/${PHP_VERSION}/mods-available/<name>.ini` followed by `phpenmod <name>` —
   never edit `php.ini` in place.
 - Version-specific package differences use the `[[ $PHP_VERSION =~ (…) ]]` branch idiom already in `build.sh`.
-  PHP 8.5 gets memcached/raphf/http from sury like 8.2–8.4, but has its own branch because opcache is built
-  into 8.5 (there is no `php8.5-opcache` package). Before sury packaged them they were compiled with `pecl`;
+  PHP 8.5/8.6 get memcached/raphf/http from sury like 8.2–8.4, but have their own branch because opcache is
+  built in from 8.5 on (there is no `php8.5-opcache` package). Before sury packaged them they were compiled with `pecl`;
   a brand-new PHP version will likely need that again until sury catches up. If so, install the build deps
   (`php<ver>-dev`, `build-essential`, …) and purge them in the same step, and never call `pecl install <name>` /
   `pecl download` directly: pecl.php.net 404s the PEAR release metadata (`allreleases2.xml`) and
@@ -217,6 +217,10 @@ Executable form: `verify-image.sh`. Keep the two in step.
   `3e790ef`), `display_errors=off` + `log_errors=on`, `ServerTokens Prod` / `ServerSignature Off` /
   `TraceEnable Off`, directory listing off, `javascript-common` conf disabled. python3 is **not** removed: the NodeSource
   `nodejs` package depends on it (an old `apt-get purge python3` before the install was dead and is gone).
+- PHP 8.6 (added 2026-11-25) is not `default` and has no sourceguardian (no `ixed.8.6.lin` loader yet) and no
+  valkey-glide (no released glide supports it yet) in `VERSION_TABLE`. Its other deltas, all `(8\.6)` branches:
+  no composer-require-checker (no release allows 8.6; mirrored in `verify-image.sh`), oci8 `3.4.1`. Its xdebug
+  is sury's `3.6.0~alpha1`. Re-check and drop these as upstream catches up.
 - PHP 5.6 builds only the non-slim chain (`5.6`, `-debug`, `-oci`, `-oci-debug`), like 7.4. Its deltas, all
   `(5\.6)` branches: no `decimal`/`http` packages, Composer pinned to the 2.2 LTS channel, no psalm /
   composer-require-checker, xdebug 2 `remote_*` settings in `add-debug.sh`, oci8 `2.0.12`.

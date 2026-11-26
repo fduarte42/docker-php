@@ -36,6 +36,8 @@ elif [[ $PHP_VERSION =~ (7\.2|7\.4) ]]; then
   OCI_VERSION=2.2.0
 elif [[ $PHP_VERSION =~ (8\.0) ]]; then
   OCI_VERSION=3.0.1
+elif [[ $PHP_VERSION =~ (8\.6) ]]; then
+  OCI_VERSION=3.4.1
 else
   OCI_VERSION=3.2.1
 fi

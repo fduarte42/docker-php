@@ -145,7 +145,11 @@ expect "/var/www owner" www-data:www-data "$(stat -c %U:%G /var/www)"
 
 MISSING=""
 TOOLS="composer phpcs"
-[ "$PV" = 5.6 ] || TOOLS="$TOOLS psalm composer-require-checker"
+case "$PV" in
+  5.6) ;;
+  8.6) TOOLS="$TOOLS psalm" ;;  # composer-require-checker has no release allowing 8.6 yet
+  *)   TOOLS="$TOOLS psalm composer-require-checker" ;;
+esac
 for T in $TOOLS; do has_cmd "$T" || MISSING="$MISSING $T"; done
 expect "composer tools (missing)" "" "${MISSING# }"
 

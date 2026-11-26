@@ -128,8 +128,8 @@ elif [[ $PHP_VERSION =~ (8\.2|8\.3|8\.4) ]]; then
     php${PHP_VERSION}-memcached \
     php${PHP_VERSION}-http \
     php${PHP_VERSION}-raphf
-elif [[ $PHP_VERSION =~ (8\.5) ]]; then
-  # no opcache package - it is built into php 8.5
+elif [[ $PHP_VERSION =~ (8\.5|8\.6) ]]; then
+  # no opcache package - it is built into php 8.5+
   apt-get install -y \
     php${PHP_VERSION}-memcached \
     php${PHP_VERSION}-http \
@@ -314,6 +314,9 @@ if [[ $PHP_VERSION =~ (5\.6) ]]; then
     echo "skipping composer-require-checker and psalm on PHP ${PHP_VERSION}"
 elif [[ $PHP_VERSION =~ (7\.4) ]]; then
     composer global require maglnet/composer-require-checker:3.8.0
+    composer global require vimeo/psalm
+elif [[ $PHP_VERSION =~ (8\.6) ]]; then
+    # composer-require-checker has no release allowing PHP 8.6 yet
     composer global require vimeo/psalm
 else
     composer global require maglnet/composer-require-checker

@@ -35,7 +35,7 @@ jobs:
           PHP_VERSIONS_INPUT: ${{ inputs.php_versions }}
           SCHEDULE: ${{ github.event.schedule }}
         run: |
-          WEEKLY="8.3 8.4 8.5"
+          WEEKLY="8.3 8.4 8.5 8.6"
           MONTHLY="5.6 7.4 8.2"
 
           case "$SCHEDULE" in

@@ -37,6 +37,7 @@ Each PHP version comes in one or two **variants**:
 | 8.3 | full, slim | debug, oci, sourceguardian | weekly |
 | 8.4 | full, slim | debug, oci, sourceguardian | weekly |
 | 8.5 | full, slim | debug, oci, sourceguardian | weekly |
+| 8.6 | full, slim | debug, oci | weekly |
 
 Tags include, for example, `8.4`, `8.4-debug`, `8.4-oci-debug`, `8.4-slim-oci-sourceguardian` and
 `8.2-chartdirector-debug`. `./build-all.sh -L <version>` prints the exact list for a version.
@@ -52,9 +53,9 @@ The per-version gates live in `VERSION_TABLE` in `versions.sh`.
   xml, xsl and zip. Version-specific additions:
   - decimal and http, from 7.4 on;
   - apc and propro on 5.6 and 7.4;
-  - valkey_glide from 8.2 on.
+  - valkey_glide on 8.2–8.5.
 - Composer, plus the global tools `phpcs`, `psalm` and `composer-require-checker` (the last two are
-  missing on 5.6).
+  missing on 5.6; `composer-require-checker` is also missing on 8.6, which no release supports yet).
 - Node.js 24 and Yarn.
 - `pdftk`: a PHP shim on top of `qpdf` that implements pdftk's command line. There is no Java in the
   images.
@@ -105,7 +106,7 @@ with a single `-p` platform.
 
 `.github/workflows/docker-build.yml`:
 
-- **Weekly** (Thursday 00:00 UTC): 8.3, 8.4, 8.5.
+- **Weekly** (Thursday 00:00 UTC): 8.3, 8.4, 8.5, 8.6.
 - **Monthly** (1st, 12:00 UTC): 5.6, 7.4, 8.2.
 - **Manual** (`workflow_dispatch`): `all`, `weekly`, `monthly`, or a list of versions.
 

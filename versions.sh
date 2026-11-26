@@ -11,6 +11,7 @@ VERSION_TABLE="
 8.3       yes      yes   yes             -              yes
 8.4       yes      yes   yes             -              yes
 8.5       yes      yes   yes             -              yes
+8.6       -        yes   -               -              -
 "
 FEATURES="default slim sourceguardian chartdirector valkey-glide"
 
